@@ -92,6 +92,12 @@ acos      :: fn { C.acosf; C.acos; }
 tan       :: fn { C.tanf; C.tan; }
 atan      :: fn { C.atanf; C.atan; }
 
+sign :: fn (v: ?T) T {
+	if v > auto 0 then return auto  1;
+	if v < auto 0 then return auto -1;
+	return auto 0;
+}
+
 fmod :: fn {
 	fn (x: f32, y: f32) f32 {
 		return x - f32_trunc(x / y) * y;
