@@ -107,6 +107,12 @@ fmod :: fn {
 	};
 }
 
+sign :: fn (x: ?T) T #inline {
+	if x > auto 0 then return auto  1;
+	if x < auto 0 then return auto -1;
+	return auto 0;
+}
+
 abs :: fn { f32_abs; f64_abs; s64_abs; }
 compare :: fn { f32_compare; f64_compare; }
 degtorad :: fn { f32_degtorad; f64_degtorad; }

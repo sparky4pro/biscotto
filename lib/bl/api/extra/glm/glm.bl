@@ -103,6 +103,11 @@ cross :: fn { v3_cross; }
 round :: fn { v2_round; v3_round; v4_round; }
 floor :: fn { v2_floor; v3_floor; v4_floor; }
 ceil :: fn { v2_ceil; v3_ceil; v4_ceil; }
+abs :: fn {
+	fn (v: v2) v2 { return .{ math.abs(v.x), math.abs(v.y) }; };
+	fn (v: v3) v3 { return .{ math.abs(v.x), math.abs(v.y), math.abs(v.z) }; };
+	fn (v: v4) v4 { return .{ math.abs(v.x), math.abs(v.y), math.abs(v.z), math.abs(v.w) }; };
+}
 
 abs :: fn {
 	fn (v: v2) v2 #inline {
@@ -211,11 +216,11 @@ mat4_init_look :: fn (m: *mat4, eye: v3, direction: v3, up: v3) {
 	(@m)[2][0] = s.z;
 	(@m)[2][1] = u.z;
 	(@m)[2][2] = -f.z;
-	
+
 	(@m)[3][0] = -dot(s, eye);
 	(@m)[3][1] = -dot(u, eye);
 	(@m)[3][2] = dot(f, eye);
-	
+
 	(@m)[3][3] = 1.f;
 }
 

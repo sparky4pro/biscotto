@@ -29,6 +29,21 @@ StaticArray :: fn (TElem: type #comptime, elem_count: s64 #comptime) type #compt
 ///     Asserts in case there is not enough space left in the storage.
 sarray_push :: fn { impl_push_empty; impl_push; }
 
+/// Push bunch of elements at the end of the array.
+sarray_push_all :: fn (arr: *?TArr, values: []sarray_typeof_elem(TArr)) {
+	assert(arr, "Passed array is invalid.");
+	if values.len < 1 then return;
+	if arr.len + values.len > arr.data.len {
+		panic("Static array overflow, current number of elements is %, trying to push % elements, when total capacity is %.", arr.len, values.len, arr.data.len);
+	}
+
+	elem_size :: sizeof(sarray_typeof_elem(TArr));
+	dest_ptr :: &arr.data[arr.len];
+	arr.len += values.len;
+	memcpy(auto dest_ptr, auto values.ptr, elem_size * auto values.len);
+}
+
+
 /// Pops the last element of the array into `out` destination and returns `true`
 /// otherwise returns `false` and value of `out` stays unchanged.
 sarray_pop :: fn (arr: *?TArr, out: *sarray_typeof_elem(TArr) = null) bool #inline {

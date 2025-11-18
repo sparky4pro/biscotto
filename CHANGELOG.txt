@@ -24,11 +24,14 @@ std/print:
 - Fix issues with negative unsigned values being incorrectly converted to string when fmt
   is used for formatting.
 
-std/math:
-- Add sign function.
-
 extra/glm:
-- Add abs function for vectors.
+- Add version of `abs` function for vectors.
+
+std/static_array:
+- Add `sarray_push_all` function.
+
+std/math:
+- Add `sign` function.
 
 [Documentation]
 [Deprecated]
