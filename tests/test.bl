@@ -2,7 +2,13 @@
 
 V : u64 : 1<<(60+3);
 
+A :: cast(*u8) -1;
+
+// foo :: fn (T: type #comptime, v: T) {}
+
 main :: fn () s32 {
 	print("%\n", fmt_int(V, FmtIntBase.HEX));
+	print("%\n", fmt_int(cast(u64)A, FmtIntBase.HEX));
+	// foo(10, 10);
 	return 0;
 }

@@ -1,0 +1,6 @@
+#scope_private
+
+default_types :: fn () #test {
+	A :: 10;
+	test_eq(typeinfo(A), typeinfo(s32));
+}

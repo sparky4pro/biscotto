@@ -205,7 +205,6 @@ static struct mir_type *create_type_int(struct context *ctx, struct id *user_id,
 static struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
 static struct mir_type *create_type_placeholder(struct context *ctx);
-static struct mir_type *create_type_volatile_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed);
 
 typedef struct
 {
@@ -326,7 +325,8 @@ typedef struct
 	enum mir_fn_generated_flavor_flags generated_flags;
 } create_fn_args_t;
 
-static struct mir_fn                  *create_fn(struct context *ctx, create_fn_args_t *args);
+static struct mir_fn *_create_fn(struct context *ctx, create_fn_args_t *args);
+#define create_fn(ctx, ...) _create_fn((ctx), &(create_fn_args_t){__VA_ARGS__})
 static struct mir_fn_group            *create_fn_group(struct context *ctx, struct ast *decl_node, mir_fns_t *variants);
 static struct mir_fn_generated_recipe *create_fn_generation_recipe(struct context *ctx, struct ast *ast_lit_fn);
 
@@ -358,7 +358,7 @@ static struct mir_instr_block *append_global_block(struct context *ctx, const st
 // instructions
 static void             *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *node);
 static struct mir_instr *create_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type);
-static struct mir_instr *create_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val);
+static struct mir_instr *create_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val, bool is_volatile_type);
 static struct mir_instr *create_instr_const_ptr(struct context *ctx, struct ast *node, struct mir_type *type, vm_stack_ptr_t ptr);
 static struct mir_instr *create_instr_const_float(struct context *ctx, struct ast *node, float val);
 static struct mir_instr *create_instr_const_double(struct context *ctx, struct ast *node, double val);
@@ -502,7 +502,7 @@ static struct mir_instr *append_instr_decl_arg(struct context *ctx, append_instr
 static struct mir_instr *append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_instr *value, struct mir_instr *base_type, struct mir_variant *prev_variant, const bool is_flags);
 static struct mir_instr *append_instr_const_type(struct context *ctx, struct ast *node, struct mir_type *type);
 static struct mir_instr *append_instr_const_scope(struct context *ctx, struct ast *node, struct scope *scope);
-static struct mir_instr *append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val);
+static struct mir_instr *append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val, bool is_volatile_type);
 static struct mir_instr *append_instr_const_float(struct context *ctx, struct ast *node, float val);
 static struct mir_instr *append_instr_const_double(struct context *ctx, struct ast *node, double val);
 static struct mir_instr *append_instr_const_bool(struct context *ctx, struct ast *node, bool val);
@@ -768,7 +768,7 @@ static inline struct mir_var *add_global_bool(struct context *ctx, struct id *id
 }
 
 static inline struct mir_var *add_global_int(struct context *ctx, struct id *id, struct ast *node, bool is_mutable, bool is_builtin, struct mir_type *type, s32 v) {
-	return add_global_variable(ctx, id, node, is_mutable, is_builtin, create_instr_const_int(ctx, NULL, type, v));
+	return add_global_variable(ctx, id, node, is_mutable, is_builtin, create_instr_const_int(ctx, NULL, type, v, false));
 }
 
 static inline struct mir_var *add_builtin_global_bool(struct context *ctx, struct id *id, bool is_mutable, bool v) {
@@ -1802,20 +1802,6 @@ struct mir_type *create_type_int(struct context *ctx, struct id *user_id, s32 bi
 	return tmp;
 }
 
-static struct mir_type *create_type_volatile_int(struct context *ctx, struct id *user_id, s32 bitcount, bool is_signed) {
-	bassert(user_id);
-	bassert(user_id->hash);
-	bassert(bitcount > 0);
-
-	struct mir_type *tmp        = create_type(ctx, MIR_TYPE_VOLATILE_INT, user_id);
-	tmp->data.integer.bitcount  = bitcount;
-	tmp->data.integer.is_signed = is_signed;
-	tmp->can_use_cache          = true;
-
-	type_init_llvm_int(ctx, tmp);
-	return tmp;
-}
-
 struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount) {
 	bassert(user_id);
 	bassert(bitcount > 0);
@@ -2759,7 +2745,7 @@ static struct mir_var *create_var_impl(struct context *ctx, create_var_impl_args
 	return tmp;
 }
 
-struct mir_fn *create_fn(struct context *ctx, create_fn_args_t *args) {
+struct mir_fn *_create_fn(struct context *ctx, create_fn_args_t *args) {
 	bassert(args->prototype);
 
 	struct mir_fn *tmp = arena_alloc(&ctx->mir_arenas->fn);
@@ -2953,7 +2939,6 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to) {
 	case MIR_TYPE_ENUM:
 		// from enum
 		from = from->data.enm.base_type;
-	case MIR_TYPE_VOLATILE_INT:
 	case MIR_TYPE_INT: {
 		// from integer
 		switch (to->kind) {
@@ -2965,8 +2950,6 @@ enum mir_cast_op get_cast_op(struct mir_type *from, struct mir_type *to) {
 			const bool is_from_signed = from->data.integer.is_signed;
 			if (fsize < tsize) {
 				return is_to_signed ? MIR_CAST_SEXT : MIR_CAST_ZEXT;
-			} else if (fsize == tsize && is_to_signed == is_from_signed) {
-				return MIR_CAST_NONE;
 			} else {
 				return MIR_CAST_TRUNC;
 			}
@@ -3113,11 +3096,13 @@ struct mir_instr *create_instr_decl_direct_ref(struct context *ctx, struct ast *
 	return &tmp->base;
 }
 
-struct mir_instr *create_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val) {
-	struct mir_instr_const *tmp = create_instr(ctx, MIR_INSTR_CONST, node);
-	tmp->base.value.type        = type;
-	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
-	tmp->base.value.is_comptime = true;
+struct mir_instr *create_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val, bool is_volatile_type) {
+	bassert(!is_volatile_type || type->kind == MIR_TYPE_INT);
+	struct mir_instr_const *tmp      = create_instr(ctx, MIR_INSTR_CONST, node);
+	tmp->base.value.type             = type;
+	tmp->base.value.addr_mode        = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime      = true;
+	tmp->base.value.is_type_volatile = is_volatile_type;
 	MIR_CEV_WRITE_AS(u64, &tmp->base.value, val);
 	return &tmp->base;
 }
@@ -3473,12 +3458,12 @@ struct mir_instr *create_default_value_for_type(struct context *ctx, struct mir_
 		// Use first enum variant as default.
 		struct mir_type    *base_type = type->data.enm.base_type;
 		struct mir_variant *variant   = sarrpeek(type->data.enm.variants, 0);
-		default_value                 = create_instr_const_int(ctx, NULL, base_type, variant->value);
+		default_value                 = create_instr_const_int(ctx, NULL, base_type, variant->value, false);
 		break;
 	}
 
 	case MIR_TYPE_INT: {
-		default_value = create_instr_const_int(ctx, NULL, type, 0);
+		default_value = create_instr_const_int(ctx, NULL, type, 0, false);
 		break;
 	}
 
@@ -3912,8 +3897,8 @@ append_instr_decl_variant(struct context *ctx, struct ast *node, struct mir_inst
 	return &tmp->base;
 }
 
-inline struct mir_instr *append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val) {
-	struct mir_instr *tmp = create_instr_const_int(ctx, node, type, val);
+inline struct mir_instr *append_instr_const_int(struct context *ctx, struct ast *node, struct mir_type *type, u64 val, bool is_volatile_type) {
+	struct mir_instr *tmp = create_instr_const_int(ctx, node, type, val, is_volatile_type);
 	append_current_block(ctx, tmp);
 	return tmp;
 }
@@ -3956,7 +3941,7 @@ struct mir_instr *append_instr_const_string(struct context *ctx, struct ast *nod
 	// Build up string as compound expression of length and pointer to data.
 	mir_instrs_t *values = arena_alloc(ctx->small_array_arena);
 
-	struct mir_instr *len = create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, str.len);
+	struct mir_instr *len = create_instr_const_int(ctx, node, ctx->builtin_types->t_s64, str.len, false);
 	struct mir_instr *ptr = create_instr_const_ptr(ctx, node, ctx->builtin_types->t_u8_ptr, (vm_stack_ptr_t)str.ptr);
 
 	analyze_instr_rq(ctx, len);
@@ -4349,6 +4334,7 @@ enum vm_interp_state evaluate(struct context *ctx, struct mir_instr *instr) {
 		erase_instr_tree(instr, true, true);
 		mutate_instr(instr, MIR_INSTR_CONST);
 	}
+
 	return VM_INTERP_PASSED;
 }
 
@@ -5316,7 +5302,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 			//     elemptr
 			//     addrof
 			// to match syntax: &array[0]
-			struct mir_instr *index = create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, 0);
+			struct mir_instr *index = create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, 0, false);
 
 			insert_instr_before(&member_ptr->base, index);
 
@@ -6829,11 +6815,11 @@ struct result analyze_instr_decl_variant(struct context *ctx, struct mir_instr_d
 
 	if (variant_instr->value) {
 		// User defined initialization value.
-		if (!mir_is_comptime(variant_instr->value)) {
-			report_error(INVALID_EXPR, variant_instr->value->node, "Enum variant value must be compile time known.");
+		if (analyze_slot(ctx, analyze_slot_conf_default, &variant_instr->value, base_type) != ANALYZE_PASSED) {
 			return_zone(FAIL);
 		}
-		if (analyze_slot(ctx, analyze_slot_conf_default, &variant_instr->value, base_type) != ANALYZE_PASSED) {
+		if (!mir_is_comptime(variant_instr->value)) {
+			report_error(INVALID_EXPR, variant_instr->value->node, "Enum variant value must be compile time known.");
 			return_zone(FAIL);
 		}
 		// Setup value.
@@ -7347,8 +7333,8 @@ static inline bool is_type_valid_for_binop(const struct mir_type *type, const en
 struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop) {
 	zone();
 
-	if (mir_is_volatile_int_type(binop->lhs->value.type) && mir_is_volatile_int_type(binop->rhs->value.type)) {
-		binop->base.value.type = binop->lhs->value.type;
+	if (mir_is_volatile_int_type(binop->lhs) && mir_is_volatile_int_type(binop->rhs)) {
+		mir_set_volatile_int_type(&binop->base, binop->lhs->value.type);
 		return_zone(SKIP);
 	}
 
@@ -7370,7 +7356,7 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 		}
 
 		const bool lhs_is_null        = binop->lhs->value.type->kind == MIR_TYPE_NULL;
-		const bool can_propagate_RtoL = can_impl_cast(lhs_type, rhs_type) || mir_is_volatile_int_type(lhs_type);
+		const bool can_propagate_RtoL = can_impl_cast(lhs_type, rhs_type) || mir_is_volatile_int_type(binop->lhs);
 
 		if (can_propagate_RtoL) {
 			// Propagate right hand side expression type to the left.
@@ -7499,8 +7485,8 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg) 
 
 struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop) {
 	zone();
-	if (unop->expr->value.type->kind == MIR_TYPE_VOLATILE_INT) {
-		unop->base.value.type = unop->expr->value.type;
+	if (mir_is_volatile_int_type(unop->expr)) {
+		mir_set_volatile_int_type(&unop->base, unop->expr->value.type);
 		return_zone(SKIP);
 	}
 
@@ -8947,7 +8933,7 @@ enum stage_state analyze_stage_arrtoslice(struct context *ctx, struct mir_instr 
 	analyze_instr_rq(ctx, instr_ptr);
 
 	// Build array len constant
-	struct mir_instr *instr_len = create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, len);
+	struct mir_instr *instr_len = create_instr_const_int(ctx, NULL, ctx->builtin_types->t_s64, len, false);
 	insert_instr_after(*input, instr_len);
 	*input = instr_len;
 	analyze_instr_rq(ctx, instr_len);
@@ -8969,33 +8955,20 @@ enum stage_state analyze_stage_arrtoslice(struct context *ctx, struct mir_instr 
 }
 
 static struct mir_type *get_preffered_type_for_volatile_propagation(struct context *ctx, struct mir_type *current, struct mir_type *volatile_candidate) {
-	bassert(volatile_candidate && volatile_candidate->kind == MIR_TYPE_VOLATILE_INT);
-	// Convert volatile type candidate to real int type.
-	struct mir_type *candidate = NULL;
-	if (volatile_candidate == ctx->builtin_types->t_volatile_s32) {
-		candidate = ctx->builtin_types->t_s32;
-	} else if (volatile_candidate == ctx->builtin_types->t_volatile_s64) {
-		candidate = ctx->builtin_types->t_s64;
-	} else {
-		bassert(volatile_candidate == ctx->builtin_types->t_volatile_u64);
-		candidate = ctx->builtin_types->t_u64;
-	}
-	bassert(candidate);
-	if (!current) return candidate;
-
-	bassert(candidate->kind == current->kind);
-	if (current->data.integer.bitcount > candidate->data.integer.bitcount) {
-		return current;
+	bassert(volatile_candidate && volatile_candidate->kind == MIR_TYPE_INT);
+	if (!current) return volatile_candidate;
+	bassert(volatile_candidate->kind == current->kind);
+	if (volatile_candidate->store_size_bytes > current->store_size_bytes) {
+		return volatile_candidate;
 	}
 
-	return candidate;
+	return current;
 }
 
 static struct result analyze_propagate_volatile_type(struct context *ctx, struct mir_instr *root_instr, struct mir_type *type) {
 	mir_instrs_t queue = SARR_ZERO;
 
-	// struct mir_instr *instr = root_instr;
-	// bassert(!instr->value.type);
+	bassert(!type || type->kind == MIR_TYPE_INT);
 
 	//
 	// Pass I. Collect all incomplete instructions.
@@ -9015,7 +8988,7 @@ static struct result analyze_propagate_volatile_type(struct context *ctx, struct
 		++index;
 
 		bassert(instr && instr->value.type);
-		bassert(mir_is_volatile_int_type(instr->value.type));
+		bassert(mir_is_volatile_int_type(instr));
 
 		switch (instr->kind) {
 		case MIR_INSTR_CONST:
@@ -9050,6 +9023,8 @@ static struct result analyze_propagate_volatile_type(struct context *ctx, struct
 	while (index >= 0 && result.state == ANALYZE_PASSED) {
 		struct mir_instr *instr = sarrpeek(&queue, index);
 		--index;
+
+		instr->value.is_type_volatile = false;
 
 		switch (instr->kind) {
 		case MIR_INSTR_CONST: {
@@ -9086,12 +9061,12 @@ static struct result analyze_propagate_volatile_type(struct context *ctx, struct
 }
 
 enum stage_state analyze_stage_propagate_volatile_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
-	struct mir_type *input_type = (*input)->value.type;
-	if (input_type->kind != MIR_TYPE_VOLATILE_INT) return ANALYZE_STAGE_CONTINUE;
-	bassert(!slot_type || slot_type->kind == MIR_TYPE_INT);
-
-	struct result r = analyze_propagate_volatile_type(ctx, *input, slot_type);
-	return r.state != ANALYZE_PASSED ? ANALYZE_STAGE_FAILED : ANALYZE_STAGE_BREAK;
+	if (!mir_is_volatile_int_type(*input)) return ANALYZE_STAGE_CONTINUE;
+	struct mir_type *propagate_type = (slot_type && slot_type->kind == MIR_TYPE_INT) ? slot_type : NULL; 
+	struct result r = analyze_propagate_volatile_type(ctx, *input, propagate_type);
+	if (!propagate_type) return ANALYZE_STAGE_CONTINUE;
+	if (r.state == ANALYZE_PASSED) return ANALYZE_STAGE_BREAK;
+	return ANALYZE_STAGE_FAILED;
 }
 
 enum stage_state analyze_stage_implicit_cast(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
@@ -9149,6 +9124,7 @@ static struct result analyze_check_incomplete_struct_inheritance_hierarchy(struc
 	//             pointers. Also we have to explicitly skip them here, because they might be untyped
 	//             (MIR_IS_PENDING) until actual type is inferred from usage (assignment or function call).
 	if (instr->kind == MIR_INSTR_COMPOUND) return_zone(PASS);
+	if (mir_is_volatile_int_type(instr)) return_zone(PASS);
 	if (instr->state == MIR_IS_PENDING) {
 		return_zone(POSTPONE);
 	}
@@ -9637,8 +9613,13 @@ void analyze_report_unused(struct context *ctx) {
 void analyze_report_skipped(struct context *ctx) {
 	for (u32 i = 0; i < tbl_len(ctx->analyze->skipped_instructions); ++i) {
 		struct mir_instr *instr = ctx->analyze->skipped_instructions[i].hash;
-		bassert(instr->kind == MIR_INSTR_COMPOUND);
-		report_error(INVALID_TYPE, instr->node, INVALID_COMPOUND_TYPE_INFER_MESSAGE);
+		switch (instr->kind) {
+		case MIR_INSTR_COMPOUND:
+			report_error(INVALID_TYPE, instr->node, INVALID_COMPOUND_TYPE_INFER_MESSAGE);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -10618,13 +10599,14 @@ struct mir_instr *ast_expr_lit_int(struct context *ctx, struct ast *expr) {
 	// Here we choose best type for const integer literal: s32, s64 or u64. When u64 is
 	// selected, this number cannot be negative.
 	if (desired_bits < 32) {
-		type = ctx->builtin_types->t_volatile_s32;
+		type = ctx->builtin_types->t_s32;
 	} else if (desired_bits < 64) {
-		type = ctx->builtin_types->t_volatile_s64;
+		type = ctx->builtin_types->t_s64;
 	} else {
-		type = ctx->builtin_types->t_volatile_u64;
+		type = ctx->builtin_types->t_u64;
 	}
-	return append_instr_const_int(ctx, expr, type, val);
+
+	return append_instr_const_int(ctx, expr, type, val, true);
 }
 
 struct mir_instr *ast_expr_lit_float(struct context *ctx, struct ast *expr) {
@@ -10843,16 +10825,14 @@ struct mir_instr *ast_expr_lit_fn(struct context      *ctx,
 	struct mir_instr_block *prev_block = ast_current_block(ctx);
 
 	struct mir_fn *fn = create_fn(ctx,
-	                              &(create_fn_args_t){
-	                                  .node            = decl_node ? decl_node : lit_fn,
-	                                  .id              = id,
-	                                  .linkage_name    = explicit_linkage_name,
-	                                  .flags           = flags,
-	                                  .prototype       = fn_proto,
-	                                  .is_global       = is_global,
-	                                  .builtin_id      = builtin_id,
-	                                  .generated_flags = functon_generated_flavor_flags,
-	                              });
+	                              .node            = decl_node ? decl_node : lit_fn,
+	                              .id              = id,
+	                              .linkage_name    = explicit_linkage_name,
+	                              .flags           = flags,
+	                              .prototype       = fn_proto,
+	                              .is_global       = is_global,
+	                              .builtin_id      = builtin_id,
+	                              .generated_flags = functon_generated_flavor_flags);
 
 	if (isflag(flags, FLAG_OBSOLETE)) {
 		struct ast *ast_optional_message = lit_fn->data.expr_fn.obsolete_warning_message;
@@ -11635,7 +11615,7 @@ struct mir_instr *ast_type_arr(struct context *ctx, struct ast *type_arr, s64 ov
 		len = ast(ctx, ast_len);
 	} else {
 		bassert(override_len >= 0);
-		len = append_instr_const_int(ctx, ast_len, ctx->builtin_types->t_s64, (u64)override_len);
+		len = append_instr_const_int(ctx, ast_len, ctx->builtin_types->t_s64, (u64)override_len, false);
 	}
 
 	struct mir_instr *elem_type = ast(ctx, ast_elem_type);
@@ -11843,11 +11823,9 @@ struct mir_instr *ast_create_expr_resolver_call(struct context *ctx, str_t fn_na
 	fn_proto->value.type               = fn_type;
 
 	struct mir_fn *fn = create_fn(ctx,
-	                              &(create_fn_args_t){
-	                                  .linkage_name = fn_name,
-	                                  .prototype    = (struct mir_instr_fn_proto *)fn_proto,
-	                                  .is_global    = true,
-	                              });
+	                              .linkage_name = fn_name,
+	                              .prototype    = (struct mir_instr_fn_proto *)fn_proto,
+	                              .is_global    = true);
 
 	MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
 
@@ -12482,9 +12460,6 @@ static void initialize_builtins(struct assembly *assembly) {
 	bt->t_resolve_type_fn      = create_type_fn(&ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
 	bt->t_resolve_bool_expr_fn = create_type_fn(&ctx, &(create_type_fn_args_t){.ret_type = bt->t_bool});
 	bt->t_placeholer           = create_type_placeholder(&ctx);
-	bt->t_volatile_s32         = create_type_volatile_int(&ctx, &builtin_ids[BUILTIN_ID_VOLATILE_S32], 32, true);
-	bt->t_volatile_s64         = create_type_volatile_int(&ctx, &builtin_ids[BUILTIN_ID_VOLATILE_S64], 64, true);
-	bt->t_volatile_u64         = create_type_volatile_int(&ctx, &builtin_ids[BUILTIN_ID_VOLATILE_U64], 64, false);
 
 	provide_builtin_arch(&ctx);
 	provide_builtin_os(&ctx);
