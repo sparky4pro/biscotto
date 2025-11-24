@@ -763,10 +763,6 @@ static struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *t
 
 static struct mir_var *add_global_variable(struct context *ctx, struct id *id, struct ast *node, bool is_mutable, bool is_builtin, struct mir_instr *initializer);
 
-static inline struct mir_type *get_default_enum_base_type(struct context *ctx) {
-	return ctx->builtin_types->t_s32;
-}
-
 static inline struct mir_var *add_global_bool(struct context *ctx, struct id *id, struct ast *node, bool is_mutable, bool is_builtin, bool v) {
 	return add_global_variable(ctx, id, node, is_mutable, is_builtin, create_instr_const_bool(ctx, NULL, v));
 }
