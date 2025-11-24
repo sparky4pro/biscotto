@@ -137,26 +137,27 @@ struct mir_switch_case {
 typedef sarr_t(struct mir_switch_case, 32) mir_switch_cases_t;
 
 enum mir_type_kind {
-	MIR_TYPE_INVALID     = 0,
-	MIR_TYPE_TYPE        = 1,
-	MIR_TYPE_VOID        = 2,
-	MIR_TYPE_INT         = 3,
-	MIR_TYPE_REAL        = 4,
-	MIR_TYPE_FN          = 5,
-	MIR_TYPE_PTR         = 6,
-	MIR_TYPE_BOOL        = 7,
-	MIR_TYPE_ARRAY       = 8,
-	MIR_TYPE_STRUCT      = 9,
-	MIR_TYPE_ENUM        = 10,
-	MIR_TYPE_NULL        = 11,
-	MIR_TYPE_STRING      = 12,
-	MIR_TYPE_VARGS       = 13,
-	MIR_TYPE_SLICE       = 14,
-	MIR_TYPE_DYNARR      = 15,
-	MIR_TYPE_FN_GROUP    = 16,
-	MIR_TYPE_NAMED_SCOPE = 17,
-	MIR_TYPE_POLY        = 18,
-	MIR_TYPE_PLACEHOLDER = 19,
+	MIR_TYPE_INVALID      = 0,
+	MIR_TYPE_TYPE         = 1,
+	MIR_TYPE_VOID         = 2,
+	MIR_TYPE_INT          = 3,
+	MIR_TYPE_REAL         = 4,
+	MIR_TYPE_FN           = 5,
+	MIR_TYPE_PTR          = 6,
+	MIR_TYPE_BOOL         = 7,
+	MIR_TYPE_ARRAY        = 8,
+	MIR_TYPE_STRUCT       = 9,
+	MIR_TYPE_ENUM         = 10,
+	MIR_TYPE_NULL         = 11,
+	MIR_TYPE_STRING       = 12,
+	MIR_TYPE_VARGS        = 13,
+	MIR_TYPE_SLICE        = 14,
+	MIR_TYPE_DYNARR       = 15,
+	MIR_TYPE_FN_GROUP     = 16,
+	MIR_TYPE_NAMED_SCOPE  = 17,
+	MIR_TYPE_POLY         = 18,
+	MIR_TYPE_PLACEHOLDER  = 19,
+	MIR_TYPE_VOLATILE_INT = 20,
 };
 
 // External function arguments passing composite types by value needs special handling in IR.
@@ -472,6 +473,7 @@ struct mir_type {
 		struct mir_type_named_scope named_scope;
 		struct mir_type_poly        poly;
 		struct mir_type_placeholder placeholder;
+		struct mir_type_int         volatile_int;
 	} data;
 
 	bmagic_member
@@ -664,8 +666,6 @@ struct mir_instr_arg {
 
 struct mir_instr_const {
 	struct mir_instr base;
-	// Constant marked as volatile can change it's type as needed by expression.
-	bool volatile_type;
 };
 
 struct mir_instr_load {
@@ -703,7 +703,6 @@ struct mir_instr_binop {
 	enum binop_kind   op;
 	struct mir_instr *lhs;
 	struct mir_instr *rhs;
-	bool              volatile_type;
 	bool              is_condition;
 };
 
@@ -711,7 +710,6 @@ struct mir_instr_unop {
 	struct mir_instr  base;
 	enum unop_kind    op;
 	struct mir_instr *expr;
-	bool              volatile_type;
 	bool              is_condition;
 };
 
@@ -992,6 +990,11 @@ struct mir_instr_switch {
 static inline bool mir_is_pointer_type(const struct mir_type *type) {
 	bassert(type);
 	return type->kind == MIR_TYPE_PTR;
+}
+
+static inline bool mir_is_volatile_int_type(const struct mir_type *type) {
+	bassert(type);
+	return type->kind == MIR_TYPE_VOLATILE_INT;
 }
 
 static inline bool mir_is_placeholder(const struct mir_instr *instr) {

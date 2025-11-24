@@ -1,12 +1,8 @@
 #import "std/print"
 
-Foo :: struct {
-	a: s32;
-}
-
-foo :: fn (_: Foo) {}
+V : u64 : 1<<(60+3);
 
 main :: fn () s32 {
-	foo(.{ a = 10 });
+	print("%\n", fmt_int(V, FmtIntBase.HEX));
 	return 0;
 }

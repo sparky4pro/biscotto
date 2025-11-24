@@ -69,6 +69,7 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 
 	switch (type->kind) {
 	case MIR_TYPE_ENUM:
+	case MIR_TYPE_VOLATILE_INT:
 	case MIR_TYPE_INT: {
 		if (type->data.integer.is_signed) {
 			switch (type->store_size_bytes) {

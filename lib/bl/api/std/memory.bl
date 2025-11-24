@@ -192,6 +192,17 @@ new_slice :: fn (TElement: type #comptime, element_count: s64, noinit := false, 
 	return slice, OK;
 }
 
+/// Allocates new slice as duplicate of `src` slice.
+///
+/// Use [free_slice](#free_slice) to release allocated memory when it's not needed anymore.
+duplicate_slice :: fn (src: []?TElement, preferred_allocator: *Allocator = null, loc := #call_location) (duplicate: []TElement, error: Error) #inline {
+	if src.len < 1 then return .{}, OK;
+	duplicate :: new_slice(TElement, src.len, true, preferred_allocator, loc) catch return .{}, $;
+	bytes :: sizeof(TElement) * cast(usize) duplicate.len;
+	memcpy(auto duplicate.ptr, auto src.ptr, bytes);
+	return duplicate, OK;
+}
+
 /// Free memory previously allocated by specific `preferred_allocator`. In case the `preferred_allocator` is null,
 /// the default application context allocator is used. The `ptr` can be null.
 free :: fn (ptr: *u8, preferred_allocator: *Allocator = null, loc := #call_location) #inline {
