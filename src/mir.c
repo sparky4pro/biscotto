@@ -9080,7 +9080,7 @@ static struct result analyze_propagate_volatile_type(struct context *ctx, struct
 			}
 		} else if (root_type->store_size_bytes == 8) {
 			const u64 n = MIR_CEV_READ_AS(u64, &root_instr->value);
-			if ((s64)n == LONG_LONG_MIN) root_instr->value.type = ctx->builtin_types->t_s64;
+			if ((s64)n == LLONG_MIN) root_instr->value.type = ctx->builtin_types->t_s64;
 		}
 	}
 
