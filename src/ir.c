@@ -1048,7 +1048,7 @@ LLVMValueRef rtti_emit_enum_variant(struct context *ctx, struct mir_variant *var
 	struct mir_type *base_enum_type = variant->value_type->data.enm.base_type;
 
 	// The variant value is stored in the type info structure as an unsigned integer, but an
-	// enumerator base type can be a signed integer, so we have to do propper casting here to keep
+	// enumerator base type can be a signed integer, so we have to do proper casting here to keep
 	// negative values negative!
 	LLVMValueRef llvm_temporary_value = LLVMConstInt(
 	    get_type(ctx, base_enum_type), variant->value, base_enum_type->data.integer.is_signed);
@@ -2431,7 +2431,7 @@ enum state emit_instr_call(struct context *ctx, struct mir_instr_call *call) {
 				}
 				bassert(llvm_tmp);
 
-				// Create dummy type just to get propper offsets for GEPs.
+				// Create dummy type just to get proper offsets for GEPs.
 				LLVMTypeRef llvm_tmp_elem_types[] = {
 				    llvm_callee_arg_types[arg->llvm_index],
 				    llvm_callee_arg_types[arg->llvm_index + 1],

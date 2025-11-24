@@ -16,6 +16,8 @@ master
 - Add support for arbitrary slices to be emitted as binary blobs into executable data segment
   in compile time.
 - Fix implicit cast for child to base struct types.
+- Add proper type propagation for volatile typed integer literals and related binary/unary
+  operations.
 
 [Modules]
 
@@ -35,6 +37,8 @@ std/math:
 
 [Documentation]
 [Deprecated]
+[MISC]
+- Add gdb python pretty printers for some BL types.
 
 0.13.0 - 2025-07-04
 ---------------------------------------------------------------------------------------

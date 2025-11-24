@@ -186,7 +186,7 @@ window_begin :: fn (window: *Window) bool {
 
 	if !window.is_visible { return false; }
 
-	// Adjust the window possition to get propper pixel-perfect element rendering.
+	// Adjust the window possition to get proper pixel-perfect element rendering.
 	window.rect = rect_rounded(window.rect);
 
 	push_window(window);

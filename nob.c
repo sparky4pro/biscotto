@@ -15,7 +15,7 @@
 
 
     Some notes:
-    We don't care about memory management here too much, despite the fact the nob provides propper ways to handle
+    We don't care about memory management here too much, despite the fact the nob provides proper ways to handle
     it. Since this program is supposed to act, more or less, as an one-shot script, we leave memory cleanup on the
     operating system.
 

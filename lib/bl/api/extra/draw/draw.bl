@@ -25,7 +25,7 @@
 //!
 //! ## General desing
 //! The `draw` API is based on switching the global context of rendering primitives (rectangles). In example
-//! to draw bunch of colored rectangles we must set the propper shader first:
+//! to draw bunch of colored rectangles we must set the proper shader first:
 //!
 //! ```bl
 //! set_shader_color(); // Prepare renderer for rendering of colored rectangles.
@@ -52,7 +52,7 @@
 /// The [terminate](#drawterminate) must be called when draw module is not needed anymore.
 ///
 /// The current OpenGL context must be aready set, the minimal required OpenGL version is 3.3 "Core Profile". You can use
-/// i.e. `glfw` or similar tool to create window and propper OpenGL context.
+/// i.e. `glfw` or similar tool to create window and proper OpenGL context.
 ///
 /// The `gl_init` function is called internally.
 ///

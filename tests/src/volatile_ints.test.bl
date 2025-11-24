@@ -1,0 +1,22 @@
+#scope_private
+
+default_types :: fn () #test {
+	test_eq(typeinfo(10), typeinfo(s32));
+	test_eq(typeinfo(-10), typeinfo(s32));
+	test_eq(typeinfo(2147483647), typeinfo(s32)); // max
+	test_eq(typeinfo(-2147483648), typeinfo(s32)); // min
+	test_eq(typeinfo(2147483648), typeinfo(s64));
+	test_eq(typeinfo(-2147483649), typeinfo(s64));
+	test_eq(typeinfo(9223372036854775807), typeinfo(s64)); // max
+	test_eq(typeinfo(-9223372036854775808), typeinfo(s64)); // min
+}
+
+binop_propagation :: fn () #test {
+	v : u64 : 1 << (60+3);
+	test_eq(v, 0x8000000000000000);
+}
+
+ptr_type :: fn () #test {
+	v : *u8 : -1;
+	test_eq(cast(u64)v, 0xFFFFFFFFFFFFFFFF);
+}

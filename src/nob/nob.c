@@ -326,25 +326,25 @@ void find_deps(void) {
 
 	LIBZ = shell("find " LIB_PATH " -name \"libz.a\" -print -quit 2>/dev/null");
 	if (!strok(LIBZ)) {
-		nob_log(NOB_ERROR, "Unable to find 'libz.a' in non of following paths: '" LIB_PATH "'.");
+		nob_log(NOB_ERROR, "Unable to find 'libz.a' in none of following paths: '" LIB_PATH "'.");
 		exit(1);
 	}
 	nob_log(NOB_INFO, "Using 'libz' '%s'.", LIBZ);
 
 	LIBZSTD = shell("find " LIB_PATH " -name \"libzstd.a\" -print -quit 2>/dev/null");
 	if (!strok(LIBZSTD)) {
-		nob_log(NOB_ERROR, "Unable to find 'libzstd.a' in non of following paths: '" LIB_PATH "'.");
+		nob_log(NOB_ERROR, "Unable to find 'libzstd.a' in none of following paths: '" LIB_PATH "'.");
 		exit(1);
 	}
 	nob_log(NOB_INFO, "Using 'libzstd' '%s'.", LIBZSTD);
 
 	LIBTINFO = shell("find " LIB_PATH " -name \"libtinfo.a\" -print -quit 2>/dev/null");
 	if (!strok(LIBTINFO)) {
-		nob_log(NOB_WARNING, "Unable to find 'libtinfo.a' in non of following paths: '" LIB_PATH "'. Try to use ncurses.");
+		nob_log(NOB_WARNING, "Unable to find 'libtinfo.a' in none of following paths: '" LIB_PATH "'. Try to use ncurses.");
 
 		LIBTINFO = shell("find " LIB_PATH " -name \"libncurses_g.a\" -print -quit 2>/dev/null");
 		if (!strok(LIBTINFO)) {
-			nob_log(NOB_ERROR, "Unable to find 'libncurses_g.a' in non of following paths: '" LIB_PATH "'.");
+			nob_log(NOB_ERROR, "Unable to find 'libncurses_g.a' in none of following paths: '" LIB_PATH "'.");
 			exit(1);
 		}
 	}

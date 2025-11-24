@@ -8,7 +8,7 @@
 //! Set of tools to handle creation of the operating system native window with OpenGL context and handling of user inputs.
 //!
 //! The window creation does not cover OpenGL initialization, since its API must be loaded dynamically in runtime, thus the `gl_init` must
-//! be called after a window is successfully created (the propper context is set) and before any rendering.
+//! be called after a window is successfully created (the proper context is set) and before any rendering.
 //!
 //! ### Example
 //!

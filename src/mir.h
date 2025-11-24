@@ -664,8 +664,6 @@ struct mir_instr_arg {
 
 struct mir_instr_const {
 	struct mir_instr base;
-	// Constant marked as volatile can change it's type as needed by expression.
-	bool volatile_type;
 };
 
 struct mir_instr_load {
@@ -703,7 +701,6 @@ struct mir_instr_binop {
 	enum binop_kind   op;
 	struct mir_instr *lhs;
 	struct mir_instr *rhs;
-	bool              volatile_type;
 	bool              is_condition;
 };
 
@@ -711,7 +708,6 @@ struct mir_instr_unop {
 	struct mir_instr  base;
 	enum unop_kind    op;
 	struct mir_instr *expr;
-	bool              volatile_type;
 	bool              is_condition;
 };
 
@@ -992,6 +988,17 @@ struct mir_instr_switch {
 static inline bool mir_is_pointer_type(const struct mir_type *type) {
 	bassert(type);
 	return type->kind == MIR_TYPE_PTR;
+}
+
+static inline bool mir_is_volatile_int_type(const struct mir_instr *instr) {
+	bassert(instr && instr->value.type);
+	return instr->value.type->kind == MIR_TYPE_INT && instr->value.is_type_volatile;
+}
+
+static inline void mir_set_volatile_int_type(struct mir_instr *instr, struct mir_type *int_type) {
+	bassert(int_type->kind == MIR_TYPE_INT);
+	instr->value.type             = int_type;
+	instr->value.is_type_volatile = true;
 }
 
 static inline bool mir_is_placeholder(const struct mir_instr *instr) {
