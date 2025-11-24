@@ -1631,7 +1631,23 @@ ptr : *s32 = null; // *s32 null pointer literal
 
 ## Integer Literals
 
-Biscuit language provides constant integer literals written in various formats showed in the example bellow. Integer literals have a volatile type, when the desired type is not specified compiler will choose the best type to hold the value. Numbers requiring less space than 32 bits will be implicitly set to *s32*, numbers requiring more space than 31 bits and less space than 64 bits will be set to *s64* and numbers requiring 64 bits will be set to *u64* type. Bigger numbers are not supported and the compiler will complain. When we specify type explicitly (ex.: `foo : u8 : 10;`), an integer literal will inherit the type of the variable (same for function calls where the type is known).
+Biscuit language supports constant integer literals written in various formats showed in the example bellow. Integer literals have a *volatile type*, when the desired type is not explicitly specified in variable declaration, or it's not obvious from the usage, compiler will choose the best type to hold the value. In general, compiler tries to fit all literals into `s32`. Thus values in range from `S32_MIN` to `S32_MAX` use `s32` type implicitly. Otherwise, `s64` is used for bigger numbers.
+
+```bl
+A :: 10; // s32
+B :: 2147483647; // s32
+C :: 2147483648; // s64
+```
+
+When the type is known from the context or explicitly defined, the compiler will use this type in all *volatile typed* expressions. 
+
+```bl
+V : u64 : 1 << (60+3); 
+```
+
+In this example, all literals perfectly fit into `s32` type, however, variable forces the type to be `u64` in the declaration; thus all (even nested) literals are evaluated in context of `u64`, resulting correctly in `0x8000000000000000` value. 
+
+Examples of other possible notation:
 
 ```bl
 i     :: 10;        // s32 literal
