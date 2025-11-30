@@ -1,0 +1,31 @@
+#import "std/print"
+
+Fruit :: enum {
+	APPLE;
+	ORANGE;
+	BANANA;
+}
+
+print_fruit :: fn (f: Fruit) {
+	print("Fruit is: %\n", f);
+}
+
+main :: fn () s32 {
+	fruit: Fruit;
+
+	// On assignment.
+	fruit = .ORANGE;
+	print_fruit(fruit);
+
+	// On function a call.
+	print_fruit(.APPLE);
+
+	// In switch case.
+	switch fruit {
+		.APPLE  { print("APPLE\n"); }
+		.ORANGE { print("ORANGE");  }
+		.BANANA { print("BANANA");  }
+	}
+
+	return 0;
+}

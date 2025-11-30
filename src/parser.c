@@ -160,11 +160,8 @@ static inline struct ast *_parse_ident(struct context *ctx) {
 
 // Set function type flavor flag of current parent function type being parsed. Asserts in case there
 // is no current function type in the fn_type_stack.
-static inline void set_parent_function_type_flavor(struct context               *ctx,
-                                                   const enum ast_type_fn_flavor flavor) {
-	bassert(
-	    arrlenu(ctx->fn_type_stack) &&
-	    "No parent function type to be set as polymorph type, this should be an compiler error!");
+static inline void set_parent_function_type_flavor(struct context *ctx, const enum ast_type_fn_flavor flavor) {
+	bassert(arrlenu(ctx->fn_type_stack) && "No parent function type to be set as polymorph type, this should be an compiler error!");
 	for (usize i = arrlenu(ctx->fn_type_stack); i-- > 0;) {
 		struct ast *fn_type = ctx->fn_type_stack[i];
 		bassert(fn_type && fn_type->kind == AST_TYPE_FN);
@@ -442,15 +439,13 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum ha
 	}
 
 	case HD_FILE: {
-		struct ast *file =
-		    ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, scope_get(ctx));
+		struct ast *file           = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_STRING, tok_directive, scope_get(ctx));
 		file->data.expr_string.val = tok_directive->location.unit->filepath;
 		return_zone(file);
 	}
 
 	case HD_LINE: {
-		struct ast *line =
-		    ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, scope_get(ctx));
+		struct ast *line            = ast_create_node(ctx->ast_arena, AST_EXPR_LIT_INT, tok_directive, scope_get(ctx));
 		line->data.expr_integer.val = tok_directive->location.line;
 		return_zone(line);
 	}
@@ -984,7 +979,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static) {
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
 	}
 
-	bool is_semicolon_required = !is_expression;
+	bool is_semicolon_required          = !is_expression;
 	bool has_explicit_true_branch_block = false;
 
 	//
@@ -995,7 +990,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static) {
 		if (is_expression) {
 			builder_msg(MSG_ERR, ERR_EXPECTED_EXPR, true_branch->location, CARET_WORD, "Blocks cannot be used in ternary if expressions.");
 		}
-		is_semicolon_required = false;
+		is_semicolon_required          = false;
 		has_explicit_true_branch_block = true;
 	}
 
@@ -1038,8 +1033,8 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static) {
 	//
 	// Else branch
 	//
-	struct ast *false_branch = NULL;
-	struct token *tok_else = tokens_consume_if(ctx->tokens, SYM_ELSE);
+	struct ast   *false_branch = NULL;
+	struct token *tok_else     = tokens_consume_if(ctx->tokens, SYM_ELSE);
 	if (tok_else) {
 		false_branch = parse_stmt_if(ctx, is_static);
 		if (!false_branch) false_branch = parse_block(ctx, SCOPE_LEXICAL);
@@ -1391,8 +1386,7 @@ struct ast *parse_expr_unary(struct context *ctx) {
 
 	if (unary->data.expr_unary.next == NULL) {
 		struct token *err_tok = tokens_peek(ctx->tokens);
-		report_error(
-		    EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after unary operator.");
+		report_error(EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after unary operator.");
 		tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, op, scope_get(ctx)));
 	}
@@ -1575,17 +1569,13 @@ struct ast *parse_expr_lit_fn(struct context *ctx) {
 				bassert(hd_extension);
 				fn->data.expr_fn.enable_if = hd_extension;
 			} else if (hash_directive_to_flags(found, &flags)) {
-				if ((found == HD_EXTERN || found == HD_INTRINSIC || found == HD_EXPORT) &&
-				    hd_extension) {
+				if ((found == HD_EXTERN || found == HD_INTRINSIC || found == HD_EXPORT) && hd_extension) {
 					// Use extern flag extension on function declaration.
-					bassert(hd_extension->kind == AST_IDENT &&
-					        "Expected ident as #extern extension.");
+					bassert(hd_extension->kind == AST_IDENT && "Expected ident as #extern extension.");
 					bassert(curr_decl->data.decl_entity.explicit_linkage_name == NULL);
 					curr_decl->data.decl_entity.explicit_linkage_name = hd_extension;
 				} else if (found == HD_OBSOLETE && hd_extension) {
-					bassert(hd_extension->kind == AST_EXPR_LIT_STRING &&
-					        "The obsolete hash directive extension is supposed to be a string "
-					        "literal.");
+					bassert(hd_extension->kind == AST_EXPR_LIT_STRING && "The obsolete hash directive extension is supposed to be a string literal.");
 					fn->data.expr_fn.obsolete_warning_message = hd_extension;
 				}
 			} else {
@@ -1829,12 +1819,17 @@ struct ast *parse_ref(struct context *ctx) {
 
 struct ast *parse_ref_nested(struct context *ctx, struct ast *prev) {
 	zone();
-	if (!prev) return_zone(NULL);
 	// @Hack: This is a little hack for now, because we have .{ combination reserved for compound
 	// initializers.
 	if (tokens_peek_2nd(ctx->tokens)->sym == SYM_LBLOCK) return_zone(NULL);
 	struct token *tok = tokens_consume_if(ctx->tokens, SYM_DOT);
 	if (!tok) return_zone(NULL);
+
+	if (!prev) {
+		// Parting inferred enum type as `.FOO`.
+		prev                        = ast_create_node(ctx->ast_arena, AST_REF, tok, scope_get(ctx));
+		prev->data.ref.used_in_decl = decl_get(ctx);
+	}
 
 	struct ast *ident = parse_ident(ctx);
 	if (!ident) {
@@ -2275,6 +2270,7 @@ struct ast *parse_decl(struct context *ctx) {
 		if (isnotflag(decl->data.decl.flags, FLAG_EXTERN)) {
 			if (!decl->data.decl_entity.value) {
 				report_error(EXPECTED_INITIALIZATION, tok_assign, CARET_AFTER, "Expected binding of declaration to some value.");
+				tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
 				decl_pop(ctx);
 				return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
 			}
@@ -2316,10 +2312,13 @@ struct ast *parse_expr_call(struct context *ctx, struct ast *prev) {
 
 	struct token *location_token = tokens_peek_prev(ctx->tokens);
 	struct token *tok            = tokens_consume_if(ctx->tokens, SYM_LPAREN);
+	if (!tok) tok = tokens_consume_if(ctx->tokens, SYM_COMPTIME_CALL);
 	if (!tok) return_zone(NULL);
+
 	if (location_token && location_token->sym != SYM_IDENT) location_token = tok;
-	struct ast *call         = ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, scope_get(ctx));
-	call->data.expr_call.ref = prev;
+	struct ast *call                 = ast_create_node(ctx->ast_arena, AST_EXPR_CALL, location_token, scope_get(ctx));
+	call->data.expr_call.ref         = prev;
+	call->data.expr_call.is_comptime = token_is(tok, SYM_COMPTIME_CALL);
 	// parse args
 	bool        rq = false;
 	struct ast *tmp;

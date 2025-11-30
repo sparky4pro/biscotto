@@ -985,7 +985,8 @@ is_mouse_grabbed :: fn () bool #inline {
 
 #import "extra/glm"
 
-math :: #import "std/math";
+math       :: #import "std/math";
+type_utils :: #import "std/type_utils";
 
 #scope_private
 

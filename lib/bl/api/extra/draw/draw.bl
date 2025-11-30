@@ -708,11 +708,12 @@ clear_scissor :: fn () {
 #import "std/array"
 #import "std/string"
 
-io   :: #import "std/io";
-math :: #import "std/math";
-png  :: #import "extra/png";
-ft2  :: #import "extra/freetype2";
-C    :: #import "libc";
+io         :: #import "std/io";
+math       :: #import "std/math";
+png        :: #import "extra/png";
+ft2        :: #import "extra/freetype2";
+C          :: #import "libc";
+type_utils :: #import "std/type_utils";
 
 Context :: struct {
 	shader:  *Shader;
@@ -958,8 +959,8 @@ ShaderAttribute :: enum {
 
 Shader :: struct {
 	handle: GLuint;
-	attrib_locs:  [enum_count(ShaderAttribute)]GLint;
-	uniform_locs: [enum_count(ShaderUniform)]GLint;
+	attrib_locs:  [type_utils.enum_variant_count(ShaderAttribute)]GLint;
+	uniform_locs: [type_utils.enum_variant_count(ShaderUniform)]GLint;
 
 	texture_unit: s32;
 }

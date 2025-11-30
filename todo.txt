@@ -1,0 +1,44 @@
+@bug 4
+Function literals in group does not accept hash directives. Flags are now assigned to declaration not to function literal.
+
+@bug 5
+The auto cast is not properly evaluated in compile time. Evaluation is skipped because we do not have the type yet.
+
+@bug 5
+Direct access to type struct info members crashes the compiler.
+
+expected_k_offset := outer_info.members[0].offset_bytes;
+
+@compiler 5
+Check mutability of member_ptr and addrof in general after recent changes.
+
+@compiler 2
+Introduce #nocomptime directive to mark functions which should never be executed in compile time?
+
+@bug 2
+This is not parsed properly: 'bar() catch;'
+
+@compiler 4
+Mixed functions are generated on each call, we need some caching based on passed comptime values.
+
+$
+
+@compiler 3
+What about comptime call and catch block? We should probably disable them.
+
+@compiler 3
+Implement root type scope deduction based on context.
+Mainly used for enums, so we don't have to type full enum name everytime, something like '.Struct'.
+
+@docs 3
+Add 'IS_COMPTIME' to docs?
+
+@docs 2
+Improve #comptime documentation?
+
+@compiler 3
+Implement comptime calls.
+
+x :: my_scope.foo(10, 20) #comptime;
+- Warn when function is already marked as comptime.
+

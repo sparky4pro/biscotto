@@ -37,7 +37,7 @@ U64_MAX : u64 : 18446744073709551615;
 
 /// Returns NaN for given type `T`.
 nan :: fn (T: type #comptime) T #comptime {
-	static_assert(is_real(T));
+	static_assert(type_utils.is_real(T));
 #if T == f32 {
 	return 0.f/0.f;
 } else {
@@ -47,7 +47,7 @@ nan :: fn (T: type #comptime) T #comptime {
 
 /// Returns positive infinity value for given type `T`.
 inf :: fn (T: type #comptime) T #comptime {
-	static_assert(is_real(T));
+	static_assert(type_utils.is_real(T));
 #if T == f32 {
 	return 1.f/0.f;
 } else {
@@ -57,19 +57,19 @@ inf :: fn (T: type #comptime) T #comptime {
 
 /// Returns `true` in case the input real number is NaN (i.e. result of operation 0./0.).
 is_nan :: fn (n: ?T) bool #inline {
-	static_assert(is_real(T));
+	static_assert(type_utils.is_real(T));
 	return n != n;
 }
 
 /// Returns `true` in case the input real number is positive infinity number (i.e. result of operation 1./0.).
 is_inf :: fn (n: ?T) bool #inline {
-	static_assert(is_real(T));
+	static_assert(type_utils.is_real(T));
 	return n == inf(T);
 }
 
 /// Returns `true` in case the input real number is negative infinity number (i.e. result of operation -1./0.).
 is_ninf :: fn (n: ?T) bool #inline {
-	static_assert(is_real(T));
+	static_assert(type_utils.is_real(T));
 	return n == -inf(T);
 }
 
@@ -144,7 +144,8 @@ map :: fn (value: ?T, min1: T, max1: T, min2: T, max2: T) T #inline {
 }
 
 #scope_private
-C :: #import "libc";
+C          :: #import "libc";
+type_utils :: #import "std/type_utils";
 
 // Compiler intrinsics
 f32_sin   :: fn (n: f32) f32 #intrinsic "sin.f32";

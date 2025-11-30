@@ -188,6 +188,8 @@ void print_ref(struct ast *ref, s32 pad, FILE *stream) {
 	if (ident) {
 		const str_t s = ident->data.ident.id.str;
 		fprintf(stream, "'" STR_FMT "' ", STR_ARG(s));
+	} else {
+		fprintf(stream, "<infer_scope>");
 	}
 
 	struct ast *next = ref->data.ref.next;

@@ -114,13 +114,11 @@ void vm_build_entry_run(struct assembly *assembly) {
 	if (target->vm.argc > 0) {
 		vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
 	}
-	vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
 	builder.current_executed_assembly = assembly;
 
 	vm_execute_fn(vm, assembly, entry, NULL, NULL);
 
 	builder.current_executed_assembly = NULL;
-	vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
 	assembly->vm_run.last_execution_status = EXIT_SUCCESS;
 }
 
@@ -141,7 +139,6 @@ void vm_entry_run(struct assembly *assembly) {
 		vm_provide_command_line_arguments(vm, target->vm.argc, target->vm.argv);
 	}
 
-	vm_override_var(vm, assembly->vm_run.is_comptime_run, true);
 	builder.current_executed_assembly = assembly;
 	vm_stack_ptr_t ret_ptr            = NULL;
 	s32            result             = EXIT_SUCCESS;
@@ -159,6 +156,5 @@ void vm_entry_run(struct assembly *assembly) {
 		builder_warning("Execution finished with errors");
 	}
 	builder.current_executed_assembly = NULL;
-	vm_override_var(vm, assembly->vm_run.is_comptime_run, false);
 	assembly->vm_run.last_execution_status = result;
 }

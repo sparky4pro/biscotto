@@ -1,0 +1,38 @@
+#scope_private
+#import "experimental/variant"
+
+test_default :: fn () #test {
+	v: Variant(union { A: s32; B: f32; });
+
+	test_true(is_variant_of(&v, typeof(v).kind.A));
+	test_false(is_variant_of(&v, typeof(v).kind.B));
+}
+
+test_set :: fn () #test {
+	v: Variant(union { A: s32; B: f32; });
+	set_variant(&v, typeof(v).kind.A, 10);
+	test_true(is_variant_of(&v, typeof(v).kind.A));
+
+	set_variant(&v, typeof(v).kind.B, 10.f);
+	test_true(is_variant_of(&v, typeof(v).kind.B));
+}
+
+test_get :: fn () #test {
+	v: Variant(union { A: s32; B: f32; });
+	set_variant(&v, typeof(v).kind.A, 10);
+	test_eq(get_variant(&v, typeof(v).kind.A), 10);
+
+	set_variant(&v, typeof(v).kind.B, 10.f);
+	test_eq(get_variant(&v, typeof(v).kind.B), 10.f);
+}
+
+test_emplace :: fn () #test {
+	v: Variant(union { A: s32; B: f32; });
+	aptr :: emplace_variant(&v, typeof(v).kind.A);
+	@aptr = 10;
+	test_eq(get_variant(&v, typeof(v).kind.A), 10);
+
+	fptr :: emplace_variant(&v, typeof(v).kind.B);
+	@fptr = 10.f;
+	test_eq(get_variant(&v, typeof(v).kind.B), 10.f);
+}

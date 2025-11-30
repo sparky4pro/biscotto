@@ -512,7 +512,7 @@ print_type :: fn (buf: *?T, cur: *s32, info: *TypeInfo) {
 		return;
 	} else if info.kind == TypeKind.STRUCT {
 		c := cast(*TypeInfoStruct) info;
-		print_string(buf, cur, "struct {");
+		print_string(buf, cur, if c.is_union then "union {" else "struct {");
 
 		loop i := 0; i < c.members.len; i += 1 {
 			member := c.members[i];

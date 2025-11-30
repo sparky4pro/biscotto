@@ -1,4 +1,5 @@
 #ifdef GEN_BUILTIN_NAMES
+    BUILTIN_ID_NONE,
     BUILTIN_ID_TYPE_TYPE,
     BUILTIN_ID_TYPE_PLACEHOLDER,
     BUILTIN_ID_TYPE_NAMED_SCOPE,
@@ -51,6 +52,7 @@
     BUILTIN_ID_TYPE_CALL_LOCATION,
     BUILTIN_ID_COMMAND_LINE_ARGUMENTS,
     BUILTIN_ID_IS_COMPTIME_RUN,
+    BUILTIN_ID_IS_COMPTIME,
     BUILTIN_ID_ARCH_ENUM,
     BUILTIN_ID_ARCH,
     BUILTIN_ID_PLATFORM_ENUM,
@@ -71,6 +73,7 @@
 #endif
 
 #ifdef GEN_BUILTIN_IDS
+    {.str.ptr = "<none>"                , .str.len = 6  },
     {.str.ptr = "type"                  , .str.len = 4  },
     {.str.ptr = ".placeholer"           , .str.len = 11 },
     {.str.ptr = "scope"                 , .str.len = 5  },
@@ -123,6 +126,7 @@
     {.str.ptr = "CodeLocation"          , .str.len = 12 },
     {.str.ptr = "command_line_arguments", .str.len = 22 },
     {.str.ptr = "IS_COMPTIME_RUN"       , .str.len = 15 },
+    {.str.ptr = "IS_COMPTIME"           , .str.len = 11 },
     {.str.ptr = "Arch"                  , .str.len = 4  },
     {.str.ptr = "ARCH"                  , .str.len = 4  },
     {.str.ptr = "Platform"              , .str.len = 8  },

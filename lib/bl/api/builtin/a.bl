@@ -359,14 +359,14 @@ command_line_arguments: []string_view #compiler;
 
 /// Compile-time helper function resolving count of enumerator variants, passed type 'T' must be an
 /// enumerator type (checked by assert).
-enum_count :: fn (T: type #comptime) s64 #comptime {
+enum_count :: fn (T: type #comptime) s64 #comptime #obsolete "Since 0.14.0; Use 'enum_variant_count' in 'std/type_utils' module." {
 	info :: typeinfo(T);
 	static_assert(info.kind == TypeKind.ENUM);
 	return (cast(*TypeInfoEnum)info).variants.len;
 }
 
 /// Resolve enum variant name.
-enum_variant_name :: fn (T: type #comptime, index: s64) string_view #inline {
+enum_variant_name :: fn (T: type #comptime, index: s64) string_view #inline #obsolete "Since 0.14.0; Use 'enum_variant_name' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoEnum) typeinfo(T);
 	static_assert(info.kind == TypeKind.ENUM);
 	assert(index < info.variants.len);
@@ -374,7 +374,7 @@ enum_variant_name :: fn (T: type #comptime, index: s64) string_view #inline {
 }
 
 /// Resolve enum variant value.
-enum_variant_value :: fn (T: type #comptime, index: s64) T #inline {
+enum_variant_value :: fn (T: type #comptime, index: s64) T #inline #obsolete "Since 0.14.0; Use 'enum_variant_value' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoEnum) typeinfo(T);
 	static_assert(info.kind == TypeKind.ENUM);
 	assert(index < info.variants.len);
@@ -382,54 +382,54 @@ enum_variant_value :: fn (T: type #comptime, index: s64) T #inline {
 }
 
 /// Returns `true` if the `T` type is an integer type.
-is_number :: fn (T: type #comptime) bool #comptime {
+is_number :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_number' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.INT;
 }
 
 /// Returns `true` if the `T` type is an floating point number type.
-is_real :: fn (T: type #comptime) bool #comptime {
+is_real :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_real' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.REAL;
 }
 
 /// Returns `true` if the `T` type is an integer or floating point number type (f32 or f64).
-is_real_or_number :: fn (T: type #comptime) bool #comptime {
+is_real_or_number :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_real_or_number' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.INT || typeinfo(T).kind == TypeKind.REAL;
 }
 
 /// Returns true if the `T` type is a signed integer type.
-is_signed_number :: fn (T: type #comptime) bool #comptime {
+is_signed_number :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_signed_number' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoInt)typeinfo(T);
 	return info.kind == TypeKind.INT && info.is_signed;
 }
 
 /// Returns true if the `T` type is a pointer type.
-is_pointer :: fn (T: type #comptime) bool #comptime {
+is_pointer :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_pointer' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.PTR;
 }
 
 /// Returns true if the `T` type is a function type.
-is_function :: fn (T: type #comptime) bool #comptime {
+is_function :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_function' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.FN;
 }
 
 /// Returns true if the `T` type is a struct type.
-is_struct :: fn (T: type #comptime) bool #comptime {
+is_struct :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_struct' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.STRUCT;
 }
 
 /// Returns unique type identificator in compile-time.
-typeid :: fn (v: type #comptime) u64 #comptime {
+typeid :: fn (v: type #comptime) u64 #comptime #obsolete "Since 0.14.0; Use 'typeid' in 'std/type_utils' module." {
 	return cast(u64) typeinfo(v);
 }
 
 /// Returns `true` if the `T` type is an enumerator type.
-is_enum :: fn (T: type #comptime) bool #comptime {
+is_enum :: fn (T: type #comptime) bool #comptime #obsolete "Since 0.14.0; Use 'is_enum' in 'std/type_utils' module." {
 	return typeinfo(T).kind == TypeKind.ENUM;
 }
 
 /// Returns signed or unsigned builtin number type of the requested size.
 /// The `size_bytes` must be 1, 2, 4 or 8 Bytes.
-number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
+number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime #obsolete "Since 0.14.0; Use 'number_type' in 'std/type_utils' module." {
 	switch size_bytes {
 		1 { if is_signed { return s8;  } return u8;  }
 		2 { if is_signed { return s16; } return u16; }
@@ -448,7 +448,7 @@ number_type :: fn (size_bytes: usize, is_signed: bool) type #comptime {
 // !!!
 
 /// Check in compile-time whether structure type `TStruct` contains member called `member_name`.
-has_member :: fn (TStruct: type #comptime, member_name: string_view) bool {
+has_member :: fn (TStruct: type #comptime, member_name: string_view) bool #obsolete "Since 0.14.0; Use 'has_member' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoStruct) typeinfo(TStruct);
 	static_assert(info.kind == TypeKind.STRUCT);
 	loop i := 0; i < info.members.len; i += 1 {
@@ -460,7 +460,7 @@ has_member :: fn (TStruct: type #comptime, member_name: string_view) bool {
 }
 
 // @Cleanup
-has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comptime {
+has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comptime #obsolete "Since 0.14.0; Use 'has_member' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoStruct) typeinfo(TStruct);
 	static_assert(info.kind == TypeKind.STRUCT);
 	loop i := 0; i < info.members.len; i += 1 {
@@ -472,7 +472,7 @@ has_member2 :: fn (TStruct: type #comptime, member_name: string_view) bool #comp
 }
 
 // Returns count of structure members resolved in compile time.
-struct_count :: fn (TStruct: type #comptime) s32 #comptime {
+struct_count :: fn (TStruct: type #comptime) s32 #comptime #obsolete "Since 0.14.0; Use 'struct_member_count' in 'std/type_utils' module." {
 	info :: cast(*TypeInfoStruct) typeinfo(TStruct);
 	static_assert(info.kind == TypeKind.STRUCT);
 	return auto info.members.len;
@@ -487,68 +487,35 @@ struct_count :: fn (TStruct: type #comptime) s32 #comptime {
 /// foo/number
 /// foo/bar/number
 /// ```
-member_offset_bytes :: fn (TStruct: type #comptime, path: string_view) s64 {
-	static_assert(typeinfo(TStruct).kind == TypeKind.STRUCT);
-	assert(path.len > 0);
-
-	return member_offset_bytes2(auto typeinfo(TStruct), path);
+member_offset_bytes :: fn (TStruct: type #comptime, path: string_view) s64 #obsolete "Since 0.14.0; Use 'member_offset_bytes' in 'std/type_utils' module." {
+	return type_utils.member_offset_bytes(TStruct, path);
 }
 
-member_offset_bytes_comptime :: fn (TStruct: type #comptime, path: string_view) s64 #comptime {
-	static_assert(typeinfo(TStruct).kind == TypeKind.STRUCT);
-	assert(path.len > 0);
-
-	return member_offset_bytes2(auto typeinfo(TStruct), path);
+member_offset_bytes_comptime :: fn (TStruct: type #comptime, path: string_view) s64 #comptime #obsolete "Since 0.14.0; Use 'member_offset_bytes' in 'std/type_utils' module." {
+	return type_utils.member_offset_bytes(TStruct, path);
 }
 
-member_offset_bytes2 :: fn (type_info: *TypeInfoStruct, path: string_view) s64 {
-	assert(path.len > 0);
-
-	offset: s64;
-	info := type_info;
-	assert(info.kind == TypeKind.STRUCT);
-
-	lhs: string_view;
-	rhs := path;
-	traverse := true;
-	loop traverse {
-		if !str_split_by_first(rhs, '/', &lhs, &rhs) {
-			lhs = rhs;
-			traverse = false;
-		}
-		found := false;
-		loop i := 0; i < info.members.len; i += 1 {
-			member :: &info.members[i];
-			if str_match(member.name, lhs) {
-				offset += member.offset_bytes;
-				info    = auto member.base_type;
-				found   = true;
-				break;
-			}
-		}
-		if !found {
-			panic("No such member '%' in the structure '%' on path '%'.", lhs, info, path);
-		}
-		if traverse && info.kind != TypeKind.STRUCT {
-			panic("Member '%' in the structure '%' is supposed to be struct type.", lhs, type_info.name);
-		}
-	}
-	return offset;
+member_offset_bytes2 :: fn (type_info: *TypeInfoStruct, path: string_view, is_optional := false) s64 #obsolete "Since 0.14.0; Use 'member_offset_bytes' in 'std/type_utils' module." {
+	return type_utils.member_offset_bytes(type_info, path, is_optional);
 }
 
 // Resolve pointer to a structure member relative to the structure `base_ptr`.
 member_ptr :: fn {
-	fn (base_ptr: *u8, member: *TypeInfoStructMember) *u8 #inline {
-		return ptr_shift_bytes(base_ptr, member.offset_bytes);
-	};
-
-	fn (TMember: type #comptime, base_ptr: *?T, member_name: string_view) *TMember #inline {
-		if !has_member(T, member_name) { return null; }
-		offset :: member_offset_bytes(T, member_name);
-		return auto ptr_shift_bytes(base_ptr, offset);
-	};
+	member_ptr_impl;
+	member_ptr_impl2;
 }
 
 #scope_private
 
 #import "std/string"
+type_utils :: #import "std/type_utils";
+
+member_ptr_impl :: fn (base_ptr: *u8, member: *TypeInfoStructMember) *u8 #inline #obsolete "Since 0.14.0; Use 'member_ptr' in 'std/type_utils' module." {
+	return ptr_shift_bytes(base_ptr, member.offset_bytes);
+}
+
+member_ptr_impl2 :: fn (TMember: type #comptime, base_ptr: *?T, member_name: string_view) *TMember #inline #obsolete "Since 0.14.0; Use 'member_ptr' in 'std/type_utils' module." {
+	if !type_utils.has_member(T, member_name) { return null; }
+	offset :: type_utils.member_offset_bytes(T, member_name);
+	return auto ptr_shift_bytes(base_ptr, offset);
+}

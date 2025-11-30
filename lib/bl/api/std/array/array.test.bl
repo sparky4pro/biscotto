@@ -1,11 +1,12 @@
 #scope_private
 #import "std/array"
+type_utils :: #import "std/type_utils";
 
 test_members :: fn () #test {
-	test_true(has_member(_Array, "len"));
-	test_true(has_member(_Array, "ptr"));
-	test_true(has_member(_Array, "allocated_elems"));
-	test_true(has_member(_Array, "allocator"));
+	test_true(type_utils.has_member(_Array, "len"));
+	test_true(type_utils.has_member(_Array, "ptr"));
+	test_true(type_utils.has_member(_Array, "allocated_elems"));
+	test_true(type_utils.has_member(_Array, "allocator"));
 }
 
 test_basic_inserting_s32 :: fn () #test {

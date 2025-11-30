@@ -1,4 +1,5 @@
 #scope_private
+type_utils :: #import "std/type_utils";
 
 Data :: struct {
 	a: s32;
@@ -51,7 +52,7 @@ mixed_args_6 :: fn () #test {
 	foo :: fn (T: type #comptime, v: T) T {
 		return v;
 	};
-	
+
 	test_eq(foo(s32, 10), 10);
 	test_eq(foo(string_view, "hello"), "hello");
 	test_true(foo(bool, true));
@@ -111,7 +112,7 @@ mixed_with_default_value_3 :: fn () #test {
 mixed_with_default_value_type_1 :: fn () #test {
 	foo :: fn (A: type = s32 #comptime) A {
 		result: A;
-		return result; 
+		return result;
 	};
 
 	num1:    s32  = foo();
@@ -122,7 +123,7 @@ mixed_with_default_value_type_1 :: fn () #test {
 mixed_with_default_value_type_2 :: fn () #test {
 	foo :: fn (A: type = Data #comptime) A {
 		result: A;
-		return result; 
+		return result;
 	};
 
 	d1: Data  = foo();
@@ -198,8 +199,8 @@ MyEnum :: enum {
 	C;
 }
 
-get_enum_variant_value_array :: fn (T: type #comptime) [enum_count(T)]s32 #comptime {
-	tmp: [enum_count(T)]s32;
+get_enum_variant_value_array :: fn (T: type #comptime) [type_utils.enum_variant_count(T)]s32 #comptime {
+	tmp: [type_utils.enum_variant_count(T)]s32;
 	info :: cast(*TypeInfoEnum) typeinfo(T);
 	loop i := 0; i < info.variants.len; i += 1 {
 		tmp[i] = auto info.variants[i].value;

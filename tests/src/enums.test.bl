@@ -1,23 +1,18 @@
 #scope_private
+ABC :: enum {
+	A; B; C
+};
 
 simple_enum :: fn () #test {
-	E :: enum {
-		A; B; C
-	};
-
-	test_eq(E.A, cast(E) 0);
-	test_eq(E.B, cast(E) 1);
-	test_eq(E.C, cast(E) 2);
+	test_eq(ABC.A, cast(ABC) 0);
+	test_eq(ABC.B, cast(ABC) 1);
+	test_eq(ABC.C, cast(ABC) 2);
 };
 
 custom_enum_type :: fn () #test {
-	E :: enum u8 {
-		A; B; C
-	};
-
-	test_eq(E.A, cast(E) 0);
-	test_eq(E.B, cast(E) 1);
-	test_eq(E.C, cast(E) 2);
+	test_eq(ABC.A, cast(ABC) 0);
+	test_eq(ABC.B, cast(ABC) 1);
+	test_eq(ABC.C, cast(ABC) 2);
 };
 
 custom_enum_values :: fn () #test {
@@ -183,6 +178,49 @@ enum_nested :: fn () #test {
 		C {}
 	}
 }
+
+enum_type_deduction_initialization :: fn () #test {
+	e: ABC = .B;
+	test_eq(e, ABC.B);
+}
+
+enum_type_deduction_assignment :: fn () #test {
+	e: ABC;
+	e = .B;
+	test_eq(e, ABC.B);
+}
+
+enum_type_deduction_nested_assignment :: fn () #test {
+	S :: struct {
+		e: ABC;
+	};
+
+	s: S;
+	s.e = .B;
+	test_eq(s.e, ABC.B);
+}
+
+enum_type_deduction_call :: fn () #test {
+	func :: fn (v: ABC) ABC {
+		return v;
+	};
+	test_eq(func(.B), ABC.B);
+}
+
+enum_type_deduction_call_comptime :: fn () #test {
+	func :: fn (v: ABC #comptime) ABC {
+		return v;
+	};
+	test_eq(func(.B), ABC.B);
+}
+
+enum_type_deduction_call_with_template :: fn () #test {
+	func :: fn (_: ?T, v: ABC) ABC {
+		return v;
+	};
+	test_eq(func(10, .B), ABC.B);
+}
+
 
 C :: #import "libc";
 

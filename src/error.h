@@ -91,6 +91,7 @@ enum error {
 	ERR_COMPILE_TIME_ABORT       = 83,
 	ERR_USER                     = 84,
 	ERR_INVALID_CALL_CONVENTION  = 85,
+	ERR_UNEXPECTED_CATCH         = 86,
 };
 
 #endif // BL_ERROR_H

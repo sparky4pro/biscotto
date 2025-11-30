@@ -1,6 +1,13 @@
 #scope_private
 T1 :: struct { i: s64; j: s64 }
 T2 :: struct { a: T1;  b: T1  }
+T3 :: struct { a: s32; b: s32 }
+T4 :: struct {
+	i: s32;
+	j: s32;
+	k: [8]s32;
+};
+
 
 g1 :: T2.{T1.{10, 20}, T1.{30, 40}};
 g2 :: T2.{T1.{},       T1.{30, 40}};
@@ -240,23 +247,18 @@ compound_arrays :: fn () #test {
 }
 
 compound_structs :: fn () #test {
-	Foo :: struct {
-		i: s32;
-		j: s32
-	};
-
-	validate :: fn (v: Foo, i: s32, j: s32) {
+	validate :: fn (v: T1, i: s32, j: s32) {
 		test_eq(v.i, i);
 		test_eq(v.j, j);
 	};
 
 	{ // zero initialized
-		foo := Foo.{};
+		foo := T1.{};
 		validate(foo, 0, 0);
 	}
 
 	{ // constant values
-		foo := Foo.{ 10, 20 };
+		foo := T1.{ 10, 20 };
 		validate(foo, 10, 20);
 	}
 
@@ -264,7 +266,7 @@ compound_structs :: fn () #test {
 		i := 10;
 		j := 20;
 
-		foo := Foo.{ i, j };
+		foo := T1.{ i, j };
 		validate(foo, i, j);
 	}
 
@@ -273,20 +275,14 @@ compound_structs :: fn () #test {
 		i := 10;
 		j := 20;
 
-		validate(Foo.{}, 0, 0);
-		validate(Foo.{ 10, 20 }, 10, 20);
-		validate(Foo.{ i, j }, i, j);
+		validate(T1.{}, 0, 0);
+		validate(T1.{ 10, 20 }, 10, 20);
+		validate(T1.{ i, j }, i, j);
 	}
 }
 
 compound_naked_structs_big :: fn () #test {
-	Foo :: struct {
-		i: s32;
-		j: s32;
-		k: [8]s32;
-	};
-
-	validate :: fn (v: Foo) {
+	validate :: fn (v: T4) {
 		test_eq(v.i, 10);
 		test_eq(v.j, 20);
 		loop i := 0; i < v.k.len; i += 1 {
@@ -294,7 +290,7 @@ compound_naked_structs_big :: fn () #test {
 		}
 	};
 
-	validate(Foo.{
+	validate(T4.{
 		i = 10,
 		j = 20,
 		k = [8]s32.{ 0, 1, 2, 3, 4, 5, 6, 7 }
@@ -408,12 +404,7 @@ compound_designators2 :: fn () #test {
 }
 
 anonymous_compound_call :: fn () #test {
-	Foo :: struct {
-		a: s32;
-		b: s32;
-	};
-
-	hello :: fn (v: Foo) {
+	hello :: fn (v: T3) {
 		test_eq(v.a, 10);
 		test_eq(v.b, 20);
 	};
@@ -422,23 +413,13 @@ anonymous_compound_call :: fn () #test {
 }
 
 anonymous_compound_expr :: fn () #test {
-	Foo :: struct {
-		a: s32;
-		b: s32;
-	};
-
-	v1 : Foo : .{ 10, 20 };
+	v1 : T3 : .{ 10, 20 };
 	test_eq(v1.a, 10);
 	test_eq(v1.b, 20);
 }
 
 anonymous_compound_expr_arr :: fn () #test {
-	Foo :: struct {
-		a: s32;
-		b: s32;
-	};
-
-	v1 :: [_]Foo.{
+	v1 :: [_]T3.{
 		.{ 10, 20 },
 		.{ 30, 40 },
 	};
@@ -449,7 +430,7 @@ anonymous_compound_expr_arr :: fn () #test {
 	test_eq(v1[1].b, 40);
 
 
-	v2 : [2]Foo : .{
+	v2 : [2]T3 : .{
 		.{ 10, 20 },
 		.{ 30, 40 },
 	};
@@ -461,13 +442,8 @@ anonymous_compound_expr_arr :: fn () #test {
 }
 
 anonymous_compound_expr_arr_nested :: fn () #test {
-	Foo :: struct {
-		a: s32;
-		b: s32;
-	};
-
 	Bar :: struct {
-		foo: Foo;
+		foo: T3;
 	};
 
 	v1 :: [_]Bar.{
@@ -486,16 +462,19 @@ anonymous_compound_expr_arr_nested :: fn () #test {
 }
 
 anonymous_compound_return :: fn () #test {
-	Foo :: struct {
-		a: s32;
-		b: s32;
-	};
-
-	hello :: fn () Foo {
+	hello :: fn () T3 {
 		return .{ 10, 20 };
 	};
 
 	v :: hello();
 	test_eq(v.a, 10);
 	test_eq(v.b, 20);
+}
+
+anonymous_compound_comptime_arg :: fn () #test {
+	func :: fn (v: T3 #comptime) s32 {
+		return v.b;
+	};
+
+	test_eq(func(.{ 10, 20 }), 20);
 }

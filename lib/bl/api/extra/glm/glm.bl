@@ -147,6 +147,14 @@ mat4_zero :: fn (m: *mat4) #inline {
 	zeromem(auto m, sizeof(@m));
 }
 
+mat4_get_column :: fn (m: *mat4, index: s32) v4 #inline {
+	return .{ (@m)[index][0], (@m)[index][1], (@m)[index][2], (@m)[index][3] };
+}
+
+mat4_get_column_v3 :: fn (m: *mat4, index: s32) v3 #inline {
+	return .{ (@m)[index][0], (@m)[index][1], (@m)[index][2] };
+}
+
 mat4_init_perspective :: fn (m: *mat4, fov_rad: f32, aspect: f32, near: f32, far: f32) #inline {
 	mat4_init_perspective_rh_no(m, fov_rad, aspect, near, far);
 }

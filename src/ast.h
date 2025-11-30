@@ -330,6 +330,7 @@ struct ast_expr_binop {
 struct ast_expr_call {
 	struct ast  *ref;
 	ast_nodes_t *args;
+	bool         is_comptime;
 };
 
 struct ast_expr_catch {

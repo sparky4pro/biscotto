@@ -9,7 +9,7 @@
 //! and `values`. The `slots` array holds information about mapping of each key-value pair (inserted into `keys`
 //! and `values` arrays) and corresponding 32 bit hash value calculated from the `key` value.
 //!
-//! The `kays` and `values` arrays are actually regular dynamic arrays holding inserted keys and values,
+//! The `keys` and `values` arrays are actually regular dynamic arrays holding inserted keys and values,
 //! so it can be iterated as usual. The ordering of arrays is unstable after erase operation.
 //!
 //! Performance of insert and lookup is getting worse when the table is starting to be full, to minimize
@@ -43,7 +43,7 @@
 /// }
 /// ```
 Table :: fn (TKey: type #comptime, TValue: type #comptime) type #comptime {
-	if TKey != string  && TKey != string_view && (!is_number(TKey)) && (!is_pointer(TKey)) {
+	if TKey != string  && TKey != string_view && (!type_utils.is_number(TKey)) && (!type_utils.is_pointer(TKey)) {
 		panic("Table key value must be string, string_view, number or pointer type!");
 	}
 	return struct {
@@ -107,10 +107,10 @@ tbl_insert :: fn { impl_insert_empty; impl_insert; }
 tbl_insert_all :: fn (tbl: *?T, entries: []?TPair) #inline {
 	loop i := 0; i < entries.len; i += 1 {
 		entry :: &entries[i];
-		#if !has_member2(TPair, "key") {
+		#if !type_utils.has_member(TPair, "key") {
 			panic("Entry does not have key member!");
 		}
-		#if !has_member2(TPair, "value") {
+		#if !type_utils.has_member(TPair, "value") {
 			panic("Entry does not have value member!");
 		}
 		impl_insert(tbl, entry.key, entry.value);
@@ -193,6 +193,8 @@ tbl_clear :: fn (tbl: *?T) #inline {
 #scope_private
 #import "std/string"
 #import "std/array"
+
+type_utils :: #import "std/type_utils";
 
 DEFAULT_ENTRIES_COUNT :: 64;
 LOAD_FACTOR :: 70 #maybe_unused;

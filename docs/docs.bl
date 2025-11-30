@@ -36,6 +36,7 @@ MD_PAGES_MODULES :: [_]string_view.{
 	"modules/dlib",
 	"modules/error",
 	"modules/fs",
+	"modules/growing_buffer_stream",
 	"modules/io",
 	"modules/math",
 	"modules/memory",
@@ -47,8 +48,8 @@ MD_PAGES_MODULES :: [_]string_view.{
 	"modules/table",
 	"modules/test",
 	"modules/thread",
+	"modules/type_utils",
 	"modules/utils",
-	"modules/growing_buffer_stream",
 
 	// extra
 	"modules/argparse",
@@ -63,6 +64,9 @@ MD_PAGES_MODULES :: [_]string_view.{
 	"modules/png",
 	// "modules/ui",
 	"modules/vulkan",
+
+	// experimental
+	"modules/variant",
 };
 
 MAIN_MENU :: [_]MenuItem.{
@@ -100,6 +104,7 @@ MODULES_MENU :: [_]MenuItem.{
 	.{ id = "modules_table.html", title = "std/table", level = 2},
 	.{ id = "modules_test.html", title = "std/test", level = 2},
 	.{ id = "modules_thread.html", title = "std/thread", level = 2},
+	.{ id = "modules_type_utils.html", title = "std/type_utils", level = 2},
 	.{ id = "modules_utils.html", title = "std/utils", level = 2},
 
 	// Extra
@@ -116,11 +121,16 @@ MODULES_MENU :: [_]MenuItem.{
 	.{ id = "modules_png.html", title = "extra/png", level = 2},
 	// .{ id = "modules_ui.html", title = "extra/ui", level = 2},
 	.{ id = "modules_vulkan.html", title = "extra/vulkan", level = 2},
+
+	// Experimental
+	.{ id = "", title = "Experimental", level = 1},
+	.{ id = "modules_variant.html", title = "experimental/variant", level = 2},
 };
 
 MODULE_SRC :: [_]string_view.{
 	"build/build.bl",
 	"builtin/a.bl",
+	"experimental/variant/variant.bl",
 	"extra/argparse/argparse.bl",
 	"extra/clipboard/clipboard.bl",
 	"extra/draw/draw.bl",
@@ -131,15 +141,7 @@ MODULE_SRC :: [_]string_view.{
 	"extra/glwindow/glwindow.win32.bl",
 	"extra/mabl/miniaudio.bl",
 	"extra/png/png.bl",
-	// "extra/ui/ui.bl",
-	// "extra/ui/ui_common.bl",
 	"extra/vulkan/vulkan.bl",
-	// "os/macos/macos.bl",
-	// "os/posix/pthread/pthread.bl",
-	// "os/posix/semaphore/semaphore.bl",
-	// "os/posix/syscall/syscall.bl",
-	// "os/posix/syscall/x86_64-linux-gnu/syscall.bl",
-	// "os/windows/winapi.bl",
 	"std/arena/arena.bl",
 	"std/array/array.bl",
 	"std/async/async.bl",
@@ -162,7 +164,16 @@ MODULE_SRC :: [_]string_view.{
 	"std/table/table.bl",
 	"std/test/test.bl",
 	"std/thread/thread.bl",
+	"std/type_utils/type_utils.bl",
 	"std/utils.bl",
+	// "extra/ui/ui.bl",
+	// "extra/ui/ui_common.bl",
+	// "os/macos/macos.bl",
+	// "os/posix/pthread/pthread.bl",
+	// "os/posix/semaphore/semaphore.bl",
+	// "os/posix/syscall/syscall.bl",
+	// "os/posix/syscall/x86_64-linux-gnu/syscall.bl",
+	// "os/windows/winapi.bl",
 };
 
 Lang :: enum {

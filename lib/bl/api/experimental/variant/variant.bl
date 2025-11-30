@@ -1,0 +1,113 @@
+//! # Variant
+//!
+//! `#import "std/variant"`
+//!
+//! **Variant** is a light-weight *tagged union* helper built on top of a plain `union` type.
+//! It wraps an existing `union` and augments it with a discriminant `kind`, so you can
+//! safely track which union member is currently active.
+//!
+//! A new variant type can be easily created by [`Variant`](modules_variant.html#Variant) helper
+//! function.
+//!
+//! To set variant to a new value use:
+//! * [`set_variant`](modules_variant.html#set_variant)
+//! * [`set_variant_ref`](modules_variant.html#set_variant_ref)
+//! * [`emplace_variant`](modules_variant.html#emplace_variant)
+//! * Or set `MyVariant.my_kind` directly when it's safe.
+//!
+//! To get variant value use:
+//! * [`get_variant`](modules_variant.html#get_variant)
+//! * [`get_variant_ref`](modules_variant.html#get_variant_ref)
+//! * Or read `MyVariant.my_kind` directly when it's safe.
+//!
+//! To check which kind is currenlty set for the variant use:
+//! * [`is_variant_of`](modules_variant.html#is_variant_of)
+//! * Or check the `MyVariant.kind` member.
+//!
+//! ### Example
+//!
+//! ```bl
+//! #import "experimental/variant"
+//! var: Variant(union { my_int: s32; my_float: f32; });
+//!
+//! main :: fn () s32 {
+//! 	set_variant(&var, .my_float, 10.f);
+//! 	switch var.kind {
+//! 		.my_int   {
+//! 			print("Value is int: %\n", var.my_int);
+//! 		}
+//! 		.my_float {
+//! 			print("Value is float: %\n", var.my_float);
+//! 		}
+//! 	}
+//!
+//! 	return 0;
+//! }
+//! ```
+
+/// Wraps the `TUnion` type into new `Variant` type.
+///
+/// Returns a new structure based on passed union with added `kind` member or implicit enum type
+/// generated from top-level union member names. This `kind` is used to identify which union
+/// member is currently set in runtime.
+///
+/// Note that Variant follows the zero-initialization rules of the language, meaning zero initialized
+/// variant is set to the first `kind` by default.
+Variant :: fn (TUnion: type #comptime) type #comptime {
+	static_assert(is_union(TUnion));
+	TKind :: struct_members_to_enum(TUnion);
+	return struct #base TUnion {
+		kind: TKind;
+	};
+}
+
+/// Returns `true` in case the `variant` holds value of `kind`.
+is_variant_of :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime) bool #inline {
+	return variant.kind == kind;
+}
+
+/// Gets variant of `kind` by value (creates copy).
+///
+/// Panics in case the `variant` does not hold value of `kind`.
+get_variant :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime) get_struct_member_type(T.base, auto kind) #inline {
+	TResult :: get_struct_member_type(T.base, auto kind);
+	if variant.kind != kind then panic("Variant does not hold value of '%'. Current value is '%'.", kind, variant.kind);
+	return @(cast(*TResult)variant);
+}
+
+/// Gets variant of `kind` by reference.
+///
+/// Panics in case the `variant` does not hold value of `kind`.
+get_variant_ref :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime) *get_struct_member_type(T.base, auto kind) #inline {
+	if variant.kind != kind then panic("Variant does not hold value of '%'. Current value is '%'.", kind, variant.kind);
+	return auto variant;
+}
+
+/// Sets variant to `v` by value and set variant `kind`.
+set_variant :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime, v: get_struct_member_type(T.base, auto kind)) #inline {
+	variant.kind = kind;
+	memcpy(auto &variant.base, auto &v, sizeof(v));
+}
+
+/// Sets variant to `v` by reference (internal copy of `v` is done) and set variant `kind`.
+set_variant_ref :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime, v: *get_struct_member_type(T.base, auto kind)) #inline {
+	variant.kind = kind;
+	memcpy(auto &variant.base, auto v, sizeof(@v));
+}
+
+/// Sets variant `kind` and return pointer to zero initialized variant data in case `noinit` is `false`.
+emplace_variant :: fn (variant: *?T, kind: variant_typeof_kind(T) #comptime, noinit := false) *get_struct_member_type(T.base, auto kind) #inline {
+	TReturn :: get_struct_member_type(T.base, auto kind);
+	variant.kind = kind;
+	if !noinit {
+		zeromem(auto &variant.base, sizeof(TReturn));
+	}
+	return auto variant;
+}
+
+#scope_private
+#import "std/type_utils";
+
+variant_typeof_kind :: fn (TVariant: type #comptime) type #comptime {
+	return TVariant.kind;
+}

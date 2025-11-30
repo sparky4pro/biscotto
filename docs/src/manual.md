@@ -760,6 +760,14 @@ An enumerator can be nested in any _struct_ in case we want to explicitly associ
 @@@examples/enum_nested.bl
 ```
 
+### Inferred Enum Type
+
+Enumerator type can be inferred from usage as a shortcut when accessing its variants using `.FOO` syntax.
+
+```bl
+@@@examples/enum_inferred_type.bl
+```
+
 ## Enum Flags Type
 
 An enumerator can be used as a definition of bit flags by adding #flags directive to the type definition. This directive slightly changes the way how the enumerator values are generated. By default, the enumerator starts with zero variant (if it's not explicitly changed by the programmer) and every following enumerator variant has a value set to the previous one plus one. The flags enumerator starts with the first variant set to 1 and the following variants are set to the left-bit-shifted value of the previous one.
@@ -1475,6 +1483,14 @@ is_equal :: fn { // function group
        - Cannot be `extern`.
        - Cannot be `export`.
 
+## Comptime Function Call
+
+BL provides an easy way to execute any function at compile time using explicit call notation: `<function name>#()`. Once the function is called during compilation, the return value will be exposed as a constant in the final binary. Note that all arguments of a call must be known at compile time. 
+
+```bl
+@@@examples/comptime_call.bl
+```
+       
 ## Function Directives
 
 The function directives can be specified after the function return type declaration:
@@ -2487,7 +2503,8 @@ main :: fn () s32 {
 List of builtin variables set by compiler:
 
 - `IS_DEBUG` Is bool immutable variable set to true when assembly is running in debug mode.
-- `IS_COMPTIME_RUN` Is bool immutable variable set to true when assembly is executed in compile time.
+- `IS_COMPTIME` Is bool immutable variable set to true when current execution is done at compile time (inside comptime functions).
+- `IS_COMPTIME_RUN` Is bool immutable variable set to true when the whole assembly is executed in compile time (interpreter mode using `-run`).
 - `BLC_VER_MAJOR` Compiler major version number.
 - `BLC_VER_MINOR` Compiler minor version number.
 - `BLC_VER_PATCH` Compiler patch version number.

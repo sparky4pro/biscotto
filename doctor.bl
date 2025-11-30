@@ -31,6 +31,7 @@ MISC :: [_]Test.{
 };
 
 MODULES :: [_]string_view.{
+	"lib/bl/api/experimental/variant/variant.test.bl",
 	"lib/bl/api/extra/argparse/argparse.test.bl",
 	"lib/bl/api/std/arena/arena.test.bl",
 	"lib/bl/api/std/array/array.test.bl",
@@ -48,6 +49,7 @@ MODULES :: [_]string_view.{
 	"lib/bl/api/std/sync/sync.test.bl",
 	"lib/bl/api/std/table/table.test.bl",
 	"lib/bl/api/std/thread/thread.test.bl",
+	"lib/bl/api/std/type_utils/type_utils.test.bl",
 };
 
 TestKind :: enum {
@@ -513,6 +515,7 @@ BlError :: enum s32 {
 	ERR_COMPILE_TIME_ABORT       = 83;
 	ERR_USER                     = 84;
 	ERR_INVALID_CALL_CONVENTION  = 85;
+	ERR_UNEXPECTED_CATCH         = 86;
 }
 
 strtoerr :: fn (s: string_view) s32 {

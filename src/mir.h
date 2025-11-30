@@ -199,7 +199,6 @@ enum mir_cast_op {
 };
 
 enum builtin_id_kind {
-	BUILTIN_ID_NONE = -1,
 #define GEN_BUILTIN_NAMES
 #include "builtin.def"
 #undef GEN_BUILTIN_NAMES
@@ -818,6 +817,9 @@ struct mir_instr_call {
 	// is done + we have to replace the result type by placeholder.
 	bool is_inside_recipe;
 
+	// Optional, set in case the function has error handler.
+	struct ast *catch_block;
+
 	// clang-format off
 	bcalled_once_member(prescan_args)
 	bcalled_once_member(resolve_overload)
@@ -836,6 +838,9 @@ struct mir_instr_decl_ref {
 
 	// Set only for decl_refs inside struct member type resolver.
 	bool accept_incomplete_type;
+	// Used only for '.FOO' syntax.
+	bool accept_incomplete_enum;
+
 	// Set in case the named scope was specified explicitly.
 	bool ignore_scope_parents;
 };
@@ -1013,6 +1018,7 @@ static inline struct mir_type *mir_deref_type(const struct mir_type *ptr) {
 }
 
 static inline bool mir_is_composite_type(const struct mir_type *type) {
+	bassert(type);
 	switch (type->kind) {
 	case MIR_TYPE_STRUCT:
 	case MIR_TYPE_STRING:

@@ -1,31 +1,3 @@
-// =================================================================================================
-// bl
-//
-// File:   test.bl
-// Author: Martin Dorazil
-// Date:   2/11/19
-//
-// Copyright 2018 Martin Dorazil
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-// =================================================================================================
-
 // @CLEANUP These functions can be rewritten as polymorphs.
 
 //! # Test
@@ -224,7 +196,7 @@ test_is_error :: fn (got_err: Error, expected_code: s32, loc := #call_location) 
 }
 
 /*
-// @Incomplete 2025-02-12: We need long jump for this to work.
+// @Incomplete 2025-02-12: We need long jump for this to work; we have to jump from the tested function.
 
 // @Incomplete 2025-02-12: Comment!
 _expect_abort_context: struct {
@@ -245,7 +217,6 @@ test_expect_abort_begin :: fn () {
 test_expect_abort_end :: fn (loc := #call_location) {
 	ctx :: &_expect_abort_context;
 	defer zeroinit(ctx);
-	print("KOKOT\n");
 
 	application_context.abort_fn = ctx.prev_abort_handler;
 	if ctx.was_hit then return;

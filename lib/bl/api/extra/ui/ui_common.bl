@@ -237,12 +237,12 @@ generate_icon_charset :: fn (icon_set: *[..]u32) {
 rect_zero :: Rect.{};
 
 make_rect :: fn (x: ?T, y: T, w: T, h: T) Rect #inline {
-	static_assert(is_real_or_number(T));
+	static_assert(type_utils.is_real_or_number(T));
 	return Rect.{ auto x, auto y, auto w, auto h };
 }
 
 rect_resized :: fn (orig: Rect, w: ?T, h: T) Rect #inline {
-	static_assert(is_real_or_number(T));
+	static_assert(type_utils.is_real_or_number(T));
 	r := orig;
 	r.w = auto w;
 	r.h = auto h;
@@ -279,7 +279,7 @@ rect_scaled :: fn (rect: Rect, s: f32/*, rounding := true*/) Rect #inline {
 }
 
 rect_adjusted :: fn (rect: Rect, dx: ?T, dy: T = auto 0, dz : T = auto 0, dw : T = auto 0) Rect #inline {
-	static_assert(is_real_or_number(T));
+	static_assert(type_utils.is_real_or_number(T));
 	return Rect.{ rect.x + auto dx, rect.y + auto dy, rect.w - auto (dx - dz), rect.h - auto (dy - dw) };
 }
 

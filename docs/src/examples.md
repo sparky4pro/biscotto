@@ -29,6 +29,7 @@
 * [Bucket Array]($GITHUB$/docs/src/examples/bucket_array.bl)
 * [Dynamic Arrays]($GITHUB$/docs/src/examples/dynamic_arrays.bl)
 * [Enum Flags]($GITHUB$/docs/src/examples/enum_flags.bl)
+* [Enum Inferred Type]($GITHUB$/docs/src/examples/enum_inferred_type.bl)
 * [Enums]($GITHUB$/docs/src/examples/enums.bl)
 * [Hash Table]($GITHUB$/docs/src/examples/table.bl)
 * [Slices]($GITHUB$/docs/src/examples/slices.bl)
@@ -47,6 +48,7 @@
 ## Misc
 
 * [Command Line Argument Parsing]($GITHUB$/docs/src/examples/argparse.bl)
+* [Comptime Call]($GITHUB$/docs/src/examples/comptime_call.bl)
 * [Data Streams]($GITHUB$/docs/src/examples/streams.bl)
 * [Debug Allocator]($GITHUB$/docs/src/examples/debug_allocator.bl)
 * [File Visitor]($GITHUB$/docs/src/examples/visit_files.bl)

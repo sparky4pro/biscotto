@@ -1,0 +1,253 @@
+#scope_private
+#import "std/type_utils"
+
+test_typeid :: fn () #test {
+	test_eq(typeid(s32), typeid(s32));
+	test_neq(typeid(s32), typeid(f32));
+}
+
+test_is_number :: fn () #test {
+	test_true(is_number(u8));
+	test_true(is_number(u16));
+	test_true(is_number(u32));
+	test_true(is_number(u64));
+	test_true(is_number(usize));
+	test_true(is_number(s8));
+	test_true(is_number(s16));
+	test_true(is_number(s32));
+	test_true(is_number(s64));
+
+	test_false(is_number(f32));
+	test_false(is_number(f64));
+	test_false(is_number(string_view));
+}
+
+test_is_real :: fn () #test {
+	test_true(is_real(f32));
+	test_true(is_real(f64));
+
+	test_false(is_real(s32));
+	test_false(is_real(string_view));
+}
+
+test_is_real_or_number :: fn () #test {
+	test_true(is_real_or_number(u8));
+	test_true(is_real_or_number(u16));
+	test_true(is_real_or_number(u32));
+	test_true(is_real_or_number(u64));
+	test_true(is_real_or_number(usize));
+	test_true(is_real_or_number(s8));
+	test_true(is_real_or_number(s16));
+	test_true(is_real_or_number(s32));
+	test_true(is_real_or_number(s64));
+	test_true(is_real_or_number(f32));
+	test_true(is_real_or_number(f64));
+
+	test_false(is_real_or_number(bool));
+	test_false(is_real_or_number(string_view));
+}
+
+test_is_signed_number :: fn () #test {
+	test_false(is_signed_number(u8));
+	test_false(is_signed_number(u16));
+	test_false(is_signed_number(u32));
+	test_false(is_signed_number(u64));
+	test_false(is_signed_number(usize));
+	test_true(is_signed_number(s8));
+	test_true(is_signed_number(s16));
+	test_true(is_signed_number(s32));
+	test_true(is_signed_number(s64));
+
+	test_false(is_signed_number(bool));
+	test_false(is_signed_number(string_view));
+}
+
+test_is_pointer :: fn () #test {
+	test_false(is_pointer(u8));
+	test_false(is_pointer(bool));
+	test_false(is_pointer(string_view));
+	test_true(is_pointer(*u8));
+	test_true(is_pointer(*bool));
+	test_true(is_pointer(*string_view));
+}
+
+test_is_function :: fn () #test {
+	test_true(is_function(typeof(fn(){})));
+	test_false(is_function(u8));
+}
+
+test_is_struct :: fn () #test {
+	test_true(is_struct(struct { A: s32 }));
+	test_true(is_struct(union { A: s32 }));
+	test_false(is_struct(u8));
+}
+
+test_is_union :: fn () #test {
+	test_true(is_union(union { A: s32 }));
+	test_false(is_union(struct { A: s32 }));
+}
+
+test_is_enum :: fn () #test {
+	test_true(is_enum(enum { A }));
+	test_false(is_enum(struct { A: s32 }));
+	test_false(is_enum(s32));
+}
+
+test_enum_variant_count :: fn () #test {
+	test_eq(enum_variant_count(enum { A;    }), 1);
+	test_eq(enum_variant_count(enum { A; B; }), 2);
+}
+
+test_enum_variant_name :: fn () #test {
+	enm :: enum { A; B; };
+	test_eq(enum_variant_name(enm, 0), "A");
+	test_eq(enum_variant_name(enm, 1), "B");
+}
+
+test_enum_variant_value :: fn () #test {
+	enm :: enum { X; A = 10; B = 20; };
+	test_eq(enum_variant_value(enm, 0),  0);
+	test_eq(enum_variant_value(enm, 1), 10);
+	test_eq(enum_variant_value(enm, 2), 20);
+}
+
+test_struct_member_count :: fn () #test {
+	One    :: struct { a: s32; };
+	Two    :: struct { a: s32; b: f32; };
+	Three  :: struct { a: s32; b: f32; c: string_view; };
+
+	test_eq(struct_member_count(One),    1);
+	test_eq(struct_member_count(Two),    2);
+	test_eq(struct_member_count(Three),  3);
+}
+
+test_get_struct_member_type :: fn () #test {
+	S1 :: struct { a: s32 };
+	S3 :: struct { a: s32; b: f32; c: string_view };
+
+	test_true(get_struct_member_type(S1, 0) == s32);
+
+	test_true(get_struct_member_type(S3, 0) == s32);
+	test_true(get_struct_member_type(S3, 1) == f32);
+	test_true(get_struct_member_type(S3, 2) == string_view);
+}
+
+test_struct_members_to_enum :: fn () #test {
+	S1 :: struct { a: s32 };
+	S3 :: struct { a: s32; b: f32; c: string_view };
+
+	E1 :: struct_members_to_enum(S1);
+	E3 :: struct_members_to_enum(S3);
+
+	test_eq(enum_variant_count(E1), 1);
+	test_eq(enum_variant_name(E1, 0), "a");
+
+	test_eq(enum_variant_count(E3), 3);
+	test_eq(enum_variant_name(E3, 0), "a");
+	test_eq(enum_variant_name(E3, 1), "b");
+	test_eq(enum_variant_name(E3, 2), "c");
+
+	// Runtime version.
+	n0 := 0; n1 := 1; n2 := 2;
+	test_eq(enum_variant_name(E3, n0), "a");
+	test_eq(enum_variant_name(E3, n1), "b");
+	test_eq(enum_variant_name(E3, n2), "c");
+}
+
+test_number_type :: fn () #test {
+	test_true(number_type(1, false) == u8);
+	test_true(number_type(1, true)  == s8);
+
+	test_true(number_type(2, false) == u16);
+	test_true(number_type(2, true)  == s16);
+
+	test_true(number_type(4, false) == u32);
+	test_true(number_type(4, true)  == s32);
+
+	test_true(number_type(8, false) == u64);
+	test_true(number_type(8, true)  == s64);
+}
+
+test_has_member :: fn () #test {
+	S1 :: struct { a: s32 };
+	S2 :: struct { a: s32; b: f32 };
+	S3 :: struct { a: s32; b: f32; c: string_view };
+
+	test_true(has_member#(S1, "a"));
+	test_false(has_member#(S1, "b"));
+	test_false(has_member#(S1, "c"));
+
+	test_true(has_member#(S2, "a"));
+	test_true(has_member#(S2, "b"));
+	test_false(has_member#(S2, "c"));
+
+	test_true(has_member#(S3, "a"));
+	test_true(has_member#(S3, "b"));
+	test_true(has_member#(S3, "c"));
+	test_false(has_member#(S3, "x"));
+
+	// Test in runtime:
+	a := "a"; b := "b"; c := "c"; x := "x";
+	test_true(has_member(S3, a));
+	test_true(has_member(S3, b));
+	test_true(has_member(S3, c));
+	test_false(has_member(S3, x));
+}
+
+test_member_offset_bytes :: fn () #test {
+	Inner  :: struct { x: s32; y: u8 };
+	Middle :: struct { m: u16; inner: Inner };
+	Outer  :: struct { a: s8; mid: Middle; b: f64 };
+
+	struct_info :: fn (TStruct: type #comptime) *TypeInfoStruct {
+		return auto typeinfo(TStruct);
+	};
+
+	test_eq(member_offset_bytes#(Outer, "a"), struct_info(Outer).members[0].offset_bytes);
+	test_eq(member_offset_bytes#(Outer, "mid"), struct_info(Outer).members[1].offset_bytes);
+	test_eq(member_offset_bytes#(Outer, "b"), struct_info(Outer).members[2].offset_bytes);
+
+	base_mid   :: struct_info(Outer).members[1].offset_bytes;
+	base_inner :: struct_info(Middle).members[1].offset_bytes;
+	offset_x   :: struct_info(Inner).members[0].offset_bytes;
+	offset_y   :: struct_info(Inner).members[1].offset_bytes;
+
+	test_eq(member_offset_bytes#(Outer, "mid/inner/x"), base_mid + base_inner + offset_x);
+	test_eq(member_offset_bytes#(Outer, "mid/inner/y"), base_mid + base_inner + offset_y);
+
+	// Test with runtime strings:
+	path1 := "mid/inner/x";
+	path2 := "mid/inner/y";
+	test_eq(member_offset_bytes(Outer, path1), base_mid + base_inner + offset_x);
+	test_eq(member_offset_bytes(Outer, path2), base_mid + base_inner + offset_y);
+
+
+	test_eq(member_offset_bytes#(Outer, "does_not_exist", true), -1);
+	test_eq(member_offset_bytes#(Outer, "mid/inner/nope", true), -1);
+}
+
+test_member_ptr :: fn () #test {
+	Inner  :: struct { x: s32; y: u8 };
+	Middle :: struct { a: s16; inner: Inner };
+	Outer  :: struct { k: u8; mid: Middle; v: f64 };
+
+	inner_instance  : Inner  = .{ x = 11, y = 22};
+	middle_instance : Middle = .{ a = 33, inner = inner_instance};
+	outer_instance  : Outer  = .{ k = 44, mid = middle_instance, v = 55.0};
+
+	inner_info  :: cast(*TypeInfoStruct) typeinfo(Inner);
+	middle_info :: cast(*TypeInfoStruct) typeinfo(Middle);
+	outer_info  :: cast(*TypeInfoStruct) typeinfo(Outer);
+	outer_ptr := &outer_instance;
+
+	expected_k_offset   :: ptr_diff(&outer_instance.k, outer_ptr);
+	expected_mid_offset :: ptr_diff(&outer_instance.mid, outer_ptr);
+	expected_v_offset   :: ptr_diff(&outer_instance.v, outer_ptr);
+	expected_x_offset   :: ptr_diff(&outer_instance.mid.inner.x, outer_ptr);
+
+	test_eq(member_ptr(s32, outer_ptr, "k"), auto ptr_shift_bytes(outer_ptr, expected_k_offset));
+	test_eq(member_ptr(Middle, outer_ptr, "mid"), auto ptr_shift_bytes(outer_ptr, expected_mid_offset));
+	test_eq(member_ptr(f64, outer_ptr, "v"), auto ptr_shift_bytes(outer_ptr, expected_v_offset));
+	test_eq(member_ptr(s32, outer_ptr, "mid/inner/x"), auto ptr_shift_bytes(outer_ptr, expected_x_offset));
+	test_eq(member_ptr(s32, outer_ptr, "mid/inner/XXX", true), null);
+}

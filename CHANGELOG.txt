@@ -18,16 +18,35 @@ master
 - Fix implicit cast for child to base struct types.
 - Add proper type propagation for volatile typed integer literals and related binary/unary
   operations.
+- Disable error catch block on comptime functions.
+- Add builtin 'IS_COMPTIME' which is true in scope of comptime functions.
+- Add automatic enum type infer from usage.
+  see: https://github.com/biscuitlang/bl/tree/master/docs/src/examples/enum_inferred_type.bl
+- Add explicit comptime call.
+  see: https://github.com/biscuitlang/bl/tree/master/docs/src/examples/comptime_call.bl
+- Fix issues with scope layers in generated types with base types.
+- Allow comptime external functions returning `type`. These are used only as compiler
+  internals.
 
 [Modules]
+
+std/type_utils:
+- Add various type-related utilities, mostly moved from global `a.bl` (see deprecated section).
+- Add `get_struct_member_type` returning type of the struct member by providing index.
+- Add `struct_members_to_enum` converting struct to enum.
+
+experimantal/variant:
+- Add experimental tagged union implementation as 'Variant' union wrapper.
 
 std/print:
 - Fix rounding of formatted floats.
 - Fix issues with negative unsigned values being incorrectly converted to string when fmt
   is used for formatting.
+- Fix union types being incorrectly printed as struct.
 
 extra/glm:
 - Add version of `abs` function for vectors.
+- Add helpers for column extraction from `mat4`.
 
 std/static_array:
 - Add `sarray_push_all` function.
@@ -36,7 +55,30 @@ std/math:
 - Add `sign` function.
 
 [Documentation]
+- Add documentation for comptime call.
+
 [Deprecated]
+
+`enum_count`                   - Use 'enum_variant_count' in 'std/type_utils' module.
+`enum_variant_name`            - Use 'enum_variant_name' in 'std/type_utils' module.
+`enum_variant_value`           - Use 'enum_variant_value' in 'std/type_utils' module.
+`is_number`                    - Use 'is_number' in 'std/type_utils' module.
+`is_real`                      - Use 'is_real' in 'std/type_utils' module.
+`is_real_or_number`            - Use 'is_real_or_number' in 'std/type_utils' module.
+`is_signed_number`             - Use 'is_signed_number' in 'std/type_utils' module.
+`is_pointer`                   - Use 'is_pointer' in 'std/type_utils' module.
+`is_function`                  - Use 'is_function' in 'std/type_utils' module.
+`is_struct`                    - Use 'is_struct' in 'std/type_utils' module.
+`typeid`                       - Use 'typeid' in 'std/type_utils' module.
+`is_enum`                      - Use 'is_enum' in 'std/type_utils' module.
+`number_type`                  - Use 'number_type' in 'std/type_utils' module.
+`has_member`                   - Use 'has_member' in 'std/type_utils' module.
+`has_member2`                  - Use 'has_member' in 'std/type_utils' module.
+`struct_count`                 - Use 'struct_member_count' in 'std/type_utils' module.
+`member_offset_bytes`          - Use 'member_offset_bytes' in 'std/type_utils' module.
+`member_offset_bytes_comptime` - Use 'member_offset_bytes' in 'std/type_utils' module.
+`member_offset_bytes2`         - Use 'member_offset_bytes' in 'std/type_utils' module.
+
 [MISC]
 - Add gdb python pretty printers for some BL types.
 

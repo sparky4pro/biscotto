@@ -227,11 +227,9 @@ struct assembly {
 	} testing;
 
 	struct {
-		struct mir_fn  *entry;                  // Main function
-		struct mir_fn  *build_entry;            // Set for build assembly
+		struct mir_fn  *entry;                  // Main function.
+		struct mir_fn  *build_entry;            // Set for build assembly.
 		struct mir_var *command_line_arguments; // Command line arguments variable.
-		// Provide information whether application run in compile time or not.
-		struct mir_var *is_comptime_run;
 
 		// Store status of last execution of this assembly.
 		s32 last_execution_status;
@@ -255,6 +253,13 @@ struct assembly {
 	// DynCall/Lib data used for external method execution in compile time
 	DCCallVM              *dc_vm;
 	struct virtual_machine vm;
+
+	// Provide information whether application run in compile time or not.
+	struct mir_var *is_comptime_run;
+	
+	// This one is similar to is_comptime_run but is true only in case we're in compile-time
+	// evaluation, when comptime function is called during compilation.
+	struct mir_var *is_comptime;
 
 	array(struct unit *) units; // array of all units in assembly
 	mtx_t units_lock;

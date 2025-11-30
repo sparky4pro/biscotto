@@ -1,4 +1,5 @@
 #import "std/print"
+type_utils :: #import "std/type_utils";
 
 Color :: enum {
 	RED;    // default value 0
@@ -33,9 +34,9 @@ main :: fn () s32 {
 	day := Day.MON;
 	print("day = %\n", day);
 
-	// We can use 'enum_count' helper function to get count
+	// We can use 'enum_variant_count' helper function to get count
 	// of all possible values.
-	day_count :: enum_count(Day);
+	day_count :: type_utils.enum_variant_count(Day);
 	print("We have % possible days.\n", day_count);
 
 	// The 'using' can expose all possible variants of enum

@@ -716,6 +716,7 @@ void dyncall_cb_read_arg(struct virtual_machine       UNUSED(*vm),
 		break;
 	}
 
+	case MIR_TYPE_TYPE:
 	case MIR_TYPE_PTR: {
 		vm_write_ptr(type, dest, dcbArgPointer(src));
 		break;
@@ -941,6 +942,12 @@ void dyncall_push_arg(struct virtual_machine *vm, vm_stack_ptr_t val_ptr, struct
 		break;
 	}
 
+	case MIR_TYPE_TYPE: {
+		vm_stack_ptr_t tmp = vm_read_ptr(type, val_ptr);
+		dcArgPointer(dvm, (DCpointer)tmp);
+		break;
+	}
+
 	case MIR_TYPE_PTR: {
 		vm_stack_ptr_t tmp = vm_read_ptr(type, val_ptr);
 		if (mir_deref_type(type)->kind == MIR_TYPE_FN) {
@@ -1009,6 +1016,7 @@ void interp_extern_call(struct virtual_machine *vm, struct mir_instr_call *call,
 		}
 		break;
 
+	case MIR_TYPE_TYPE: // Used only in comptime calls, see '__create_type'.
 	case MIR_TYPE_PTR:
 		vm_write_as(vm_stack_ptr_t, &result, dcCallPointer(dvm, handle));
 		break;
@@ -1073,6 +1081,8 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 	const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
 	// Reset eventual previous failed state.
 	vm->aborted = false;
+	const u64 prev_is_comptime_run = vm_override_var(vm, vm->assembly->is_comptime_run, true);
+
 	if (!resume) {
 		struct mir_instr *fn_entry_instr = fn->first_block->entry_instr;
 		// push terminal frame on stack
@@ -1111,6 +1121,8 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 	default:
 		break;
 	}
+
+	vm_override_var(vm, vm->assembly->is_comptime_run, prev_is_comptime_run);
 	return state;
 }
 
@@ -2213,6 +2225,7 @@ void eval_instr_compound(struct virtual_machine *vm, struct mir_instr_compound *
 		case MIR_TYPE_REAL:
 		case MIR_TYPE_BOOL:
 		case MIR_TYPE_PTR:
+		case MIR_TYPE_TYPE:
 		case MIR_TYPE_ENUM: {
 			bassert(i == 0 && "Non-agregate type initialized with multiple values!");
 			memcpy(dest_ptr, src_ptr, value->type->store_size_bytes);
@@ -2513,12 +2526,14 @@ void vm_provide_command_line_arguments(struct virtual_machine *vm, const s32 arg
 	mtx_unlock(&vm->lock);
 }
 
-void vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 value) {
+u64 vm_override_var(struct virtual_machine *vm, struct mir_var *var, const u64 value) {
 	bassert(var);
-	struct mir_type *type     = var->value.type;
-	vm_stack_ptr_t   dest_ptr = vm_read_var(vm, var);
-	bassert(dest_ptr);
-	vm_write_int(type, dest_ptr, value);
+	struct mir_type *type = var->value.type;
+	vm_stack_ptr_t   ptr  = vm_read_var(vm, var);
+	bassert(ptr);
+	const u64 prev_value = vm_read_int(type, ptr);
+	vm_write_int(type, ptr, value);
+	return prev_value;
 }
 
 enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
@@ -2532,8 +2547,7 @@ enum vm_interp_state vm_execute_fn(struct virtual_machine *vm,
 	vm->assembly = assembly;
 	if (optional_args && optional_args->len) {
 		bassert(fn->type->data.fn.args);
-		bassert(sarrlenu(fn->type->data.fn.args) == sarrlenu(optional_args) &&
-		        "Invalid count of explicitly passed arguments");
+		bassert(sarrlenu(fn->type->data.fn.args) == sarrlenu(optional_args) && "Invalid count of explicitly passed arguments");
 		// Push all arguments in reverse order on the stack.
 		for (usize i = sarrlenu(optional_args); i-- > 0;) {
 			struct mir_const_expr_value *value = &sarrpeek(optional_args, i);
@@ -2611,9 +2625,6 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm, struct
 	bassert(mir_is_comptime(&call->base) && "Top level call is expected to be comptime.");
 	struct mir_fn *fn = mir_get_callee(call);
 	bmagic_assert(fn);
-	if (isflag(fn->flags, FLAG_EXTERN)) {
-		babort("External function cannot be #comptime for now!");
-	}
 
 	// Compile-time calls use custom execution stack since its execution can be postponed.
 	struct get_snapshot_result snapshot       = get_snapshot(vm, call);
@@ -2629,7 +2640,18 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm, struct
 			stack_push(vm, value->data, value->type);
 		}
 	}
-	enum vm_interp_state state = execute_function(vm, fn, call, snapshot.resume);
+
+	const u64 prev_is_comptime = vm_override_var(vm, assembly->is_comptime, true);
+
+	enum vm_interp_state state;
+	if (!isflag(fn->flags, FLAG_EXTERN)) {
+		state = execute_function(vm, fn, call, snapshot.resume);
+	} else {
+		state = interp_instr_call(vm, call);
+	}
+
+	vm_override_var(vm, assembly->is_comptime, prev_is_comptime);
+
 	switch (state) {
 	case VM_INTERP_PASSED:
 		// Pop return value.

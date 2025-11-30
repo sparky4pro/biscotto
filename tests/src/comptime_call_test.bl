@@ -1,0 +1,19 @@
+#scope_private
+simple_comptime :: fn () #test {
+	_1 :: fn (expect_comptime: bool) {
+		if expect_comptime {
+			test_true(IS_COMPTIME);
+		} else {
+			test_false(IS_COMPTIME);
+		}
+	};
+
+	_1(false);
+	_1#(true);
+};
+
+direct_call_comptime :: fn () #test {
+	fn () {
+		test_true(IS_COMPTIME);
+	} #();
+};
