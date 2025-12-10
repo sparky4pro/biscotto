@@ -47,7 +47,7 @@
 
 /// Wraps the `TUnion` type into new `Variant` type.
 ///
-/// Returns a new structure based on passed union with added `kind` member or implicit enum type
+/// Returns a new structure based on passed union with added `kind` member of implicit enum type
 /// generated from top-level union member names. This `kind` is used to identify which union
 /// member is currently set in runtime.
 ///
