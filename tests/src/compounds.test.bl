@@ -478,3 +478,18 @@ anonymous_compound_comptime_arg :: fn () #test {
 
 	test_eq(func(.{ 10, 20 }), 20);
 }
+
+anonymous_compound_binop_propagation :: fn () #test {
+	a := 0;
+	test_true(a == .{});
+	test_true(.{} == a);
+	a = 1;
+	test_false(.{} == a);
+}
+
+anonymous_compound_assignment_propagation :: fn () #test {
+	a : s32 = .{};
+	test_true(a == 0);
+	b : s32 = .{ 10 };
+	test_true(b == 10);
+}

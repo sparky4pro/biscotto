@@ -157,6 +157,7 @@ enum mir_type_kind {
 	MIR_TYPE_NAMED_SCOPE = 17,
 	MIR_TYPE_POLY        = 18,
 	MIR_TYPE_PLACEHOLDER = 19,
+	MIR_TYPE_INFERRED    = 20,
 };
 
 // External function arguments passing composite types by value needs special handling in IR.
@@ -380,14 +381,6 @@ struct mir_type_fn_group {
 	mir_types_t *variants;
 };
 
-struct mir_type_named_scope {
-	void *_;
-};
-
-struct mir_type_placeholder {
-	void *_;
-};
-
 struct mir_type_ptr {
 	struct mir_type *expr;
 };
@@ -468,9 +461,7 @@ struct mir_type {
 		struct mir_type_struct      strct;
 		struct mir_type_enum        enm;
 		struct mir_type_null        null;
-		struct mir_type_named_scope named_scope;
 		struct mir_type_poly        poly;
-		struct mir_type_placeholder placeholder;
 	} data;
 
 	bmagic_member
@@ -838,9 +829,6 @@ struct mir_instr_decl_ref {
 
 	// Set only for decl_refs inside struct member type resolver.
 	bool accept_incomplete_type;
-	// Used only for '.FOO' syntax.
-	bool accept_incomplete_enum;
-
 	// Set in case the named scope was specified explicitly.
 	bool ignore_scope_parents;
 };
@@ -1035,6 +1023,7 @@ static inline bool mir_is_composite_type(const struct mir_type *type) {
 }
 
 static inline bool mir_is_array_type(const struct mir_type *type) {
+	bassert(type);
 	switch (type->kind) {
 	case MIR_TYPE_ARRAY:
 	case MIR_TYPE_SLICE:
@@ -1048,6 +1037,11 @@ static inline bool mir_is_array_type(const struct mir_type *type) {
 	}
 
 	return false;
+}
+
+static inline bool mir_is_inferred_type(const struct mir_type *type) {
+	bassert(type);
+	return type->kind == MIR_TYPE_INFERRED;
 }
 
 static inline struct mir_type *mir_get_struct_elem_type(const struct mir_type *type, usize i) {

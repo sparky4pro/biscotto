@@ -18,8 +18,17 @@ Introduce #nocomptime directive to mark functions which should never be executed
 @bug 2
 This is not parsed properly: 'bar() catch;'
 
+@bug 5
+New comptime local value setup cause issues with setting struct members via pointer.
+
+request :: Request.{ job_kind = JobKind.LSP };
+rd :: &request.data.lsp;
+rd.kind     = LspRequestKind.INITIALIZE;
+
 @compiler 4
 Mixed functions are generated on each call, we need some caching based on passed comptime values.
+
+
 
 $
 
@@ -42,3 +51,8 @@ Implement comptime calls.
 x :: my_scope.foo(10, 20) #comptime;
 - Warn when function is already marked as comptime.
 
+@bug 4
+Enum type infer does not work in binary expressions?
+
+if mode != .NONE {
+}

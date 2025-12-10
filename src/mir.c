@@ -207,6 +207,7 @@ static struct mir_type *create_type_int(struct context *ctx, struct id *user_id,
 static struct mir_type *create_type_real(struct context *ctx, struct id *user_id, s32 bitcount);
 static struct mir_type *create_type_ptr(struct context *ctx, struct mir_type *src_type);
 static struct mir_type *create_type_placeholder(struct context *ctx);
+static struct mir_type *create_type_inferred(struct context *ctx);
 
 typedef struct
 {
@@ -462,7 +463,6 @@ typedef struct {
 	struct id    *rid;
 	struct scope *scope;
 	hash_t        scope_layer;
-	bool          accept_incomplete_enum;
 } append_instr_decl_ref_args_t;
 static struct mir_instr *_append_instr_decl_ref(struct context *ctx, append_instr_decl_ref_args_t *args);
 #define append_instr_decl_ref(ctx, ...) _append_instr_decl_ref((ctx), &(append_instr_decl_ref_args_t){__VA_ARGS__})
@@ -640,7 +640,7 @@ static struct result        analyze_instr(struct context *ctx, struct mir_instr 
 static struct result        analyze_resolve_compound_type(struct context *ctx, struct mir_instr_compound *compound, struct mir_type *type);
 static struct result        analyze_check_incomplete_struct_inheritance_hierarchy(struct mir_instr *instr);
 static struct result        analyze_propagate_volatile_type(struct context *ctx, struct mir_instr *root_instr, struct mir_type *type);
-static struct result        analyze_propagate_enum_scope(struct context *ctx, struct mir_instr_decl_ref *decl_ref, struct mir_type *type);
+static struct result        analyze_propagate_inferred_type(struct context *ctx, struct mir_instr *instr, struct mir_type *type);
 
 #define analyze_slot(ctx, conf, input, slot_type)                     _analyze_slot((ctx), (conf), NULL, (input), (slot_type), false)
 #define analyze_slot_with_parent(ctx, conf, parent, input, slot_type) _analyze_slot((ctx), (conf), (parent), (input), (slot_type), false)
@@ -658,8 +658,7 @@ static enum stage_state analyze_stage_unroll(struct context *ctx, struct mir_ins
 static enum stage_state analyze_stage_propagate_volatile_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
 static enum stage_state analyze_stage_set_null(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
 static enum stage_state analyze_stage_set_auto(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
-static enum stage_state analyze_stage_propagate_compound_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
-static enum stage_state analyze_stage_propagate_enum_scope(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
+static enum stage_state analyze_stage_propagate_inferred_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer);
 
 static const analyze_stage_fn_t analyze_slot_conf_dummy[] = {NULL};
 
@@ -669,8 +668,7 @@ static const analyze_stage_fn_t analyze_slot_conf_minimal[] = {
 };
 
 static const analyze_stage_fn_t analyze_slot_conf_basic[] = {
-    analyze_stage_propagate_compound_type,
-    analyze_stage_propagate_enum_scope,
+    analyze_stage_propagate_inferred_type,
     analyze_stage_propagate_volatile_type,
     analyze_stage_unroll,
     analyze_stage_load,
@@ -678,9 +676,8 @@ static const analyze_stage_fn_t analyze_slot_conf_basic[] = {
 };
 
 static const analyze_stage_fn_t analyze_slot_conf_default[] = {
-    analyze_stage_propagate_compound_type,
+    analyze_stage_propagate_inferred_type,
     analyze_stage_unroll,
-    analyze_stage_propagate_enum_scope,
     analyze_stage_propagate_volatile_type,
     analyze_stage_set_null,
     analyze_stage_set_auto,
@@ -693,9 +690,8 @@ static const analyze_stage_fn_t analyze_slot_conf_default[] = {
 };
 
 static const analyze_stage_fn_t analyze_slot_conf_full[] = {
-    analyze_stage_propagate_compound_type,
+    analyze_stage_propagate_inferred_type,
     analyze_stage_unroll,
-    analyze_stage_propagate_enum_scope,
     analyze_stage_propagate_volatile_type,
     analyze_stage_set_null,
     analyze_stage_set_auto,
@@ -709,8 +705,7 @@ static const analyze_stage_fn_t analyze_slot_conf_full[] = {
 };
 
 static const analyze_stage_fn_t analyze_slot_conf_call_arg_prescan[] = {
-    analyze_stage_propagate_compound_type,
-    analyze_stage_propagate_enum_scope,
+    analyze_stage_propagate_inferred_type,
     NULL,
 };
 
@@ -1983,6 +1978,20 @@ struct mir_type *create_type_placeholder(struct context *ctx) {
 	hash_t hash = strhash(name);
 
 	struct mir_type *tmp = create_type(ctx, MIR_TYPE_PLACEHOLDER, &builtin_ids[BUILTIN_ID_TYPE_PLACEHOLDER]);
+	tmp->id.str          = scdup2(ctx->string_cache, name);
+	tmp->id.hash         = hash;
+
+	type_init_llvm_dummy(ctx, tmp);
+	return tmp;
+}
+
+struct mir_type *create_type_inferred(struct context *ctx) {
+	// We call this only once and then reuse the type, no need to use cache here.
+
+	str_t  name = cstr("$");
+	hash_t hash = strhash(name);
+
+	struct mir_type *tmp = create_type(ctx, MIR_TYPE_INFERRED, &builtin_ids[BUILTIN_ID_TYPE_INFERRED]);
 	tmp->id.str          = scdup2(ctx->string_cache, name);
 	tmp->id.hash         = hash;
 
@@ -3777,7 +3786,6 @@ _append_instr_decl_ref(struct context *ctx, append_instr_decl_ref_args_t *args) 
 	tmp->scope_layer               = args->scope_layer;
 	tmp->rid                       = args->rid;
 	tmp->parent_unit               = args->parent_unit;
-	tmp->accept_incomplete_enum    = args->accept_incomplete_enum;
 
 	append_current_block(ctx, &tmp->base);
 	return &tmp->base;
@@ -4755,6 +4763,7 @@ static struct result analyze_instr_compound_regular(struct context *ctx, struct 
 		cmp->base.value.type = type;
 	} else if (!cmp->base.value.type) {
 		bassert(cmp->type == NULL);
+		cmp->base.value.type = ctx->builtin_types->t_inferred;
 		return_zone(SKIP);
 	}
 
@@ -5864,7 +5873,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	zone();
 	if (!ref->scope) {
 		// @Note 2025-12-07: Scope is not known '.FOO' syntax for enums.
-		bassert(ref->accept_incomplete_enum);
+		ref->base.value.type = ctx->builtin_types->t_inferred;
 		return_zone(SKIP);
 	}
 
@@ -7377,7 +7386,7 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 		}
 
 		const bool lhs_is_null        = binop->lhs->value.type->kind == MIR_TYPE_NULL;
-		const bool can_propagate_RtoL = can_impl_cast(lhs_type, rhs_type) || mir_is_volatile_int_type(binop->lhs);
+		const bool can_propagate_RtoL = can_impl_cast(lhs_type, rhs_type) || mir_is_volatile_int_type(binop->lhs) || mir_is_inferred_type(lhs_type);
 
 		if (can_propagate_RtoL) {
 			// Propagate right hand side expression type to the left.
@@ -9175,36 +9184,17 @@ enum stage_state analyze_stage_report_type_mismatch(struct context *ctx, struct 
 	return ANALYZE_STAGE_FAILED;
 }
 
-enum stage_state analyze_stage_propagate_compound_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
+enum stage_state analyze_stage_propagate_inferred_type(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
 	struct mir_instr *instr = *input;
-	if (instr->kind != MIR_INSTR_COMPOUND || instr->state != MIR_IS_PENDING) {
-		return ANALYZE_STAGE_CONTINUE;
-	}
+	if (instr->state != MIR_IS_PENDING) return ANALYZE_STAGE_CONTINUE;
+	if (!mir_is_inferred_type(instr->value.type)) return ANALYZE_STAGE_CONTINUE;
 
-	if (!slot_type) {
-		report_error(INVALID_TYPE, instr->node, INVALID_COMPOUND_TYPE_INFER_MESSAGE);
-		return ANALYZE_STAGE_FAILED;
-	}
-
-	const struct result result = analyze_resolve_compound_type(ctx, (struct mir_instr_compound *)instr, slot_type);
-	if (result.state != ANALYZE_PASSED) {
-		return ANALYZE_STAGE_FAILED;
-	}
-	return ANALYZE_STAGE_CONTINUE;
-}
-
-enum stage_state analyze_stage_propagate_enum_scope(struct context *ctx, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
-	struct mir_instr *instr = *input;
-	if (instr->kind != MIR_INSTR_DECL_REF || instr->state != MIR_IS_PENDING) {
-		return ANALYZE_STAGE_CONTINUE;
-	}
-
-	if (!slot_type || slot_type->kind != MIR_TYPE_ENUM) {
+	if (!slot_type || mir_is_inferred_type(slot_type)) {
 		report_error(INVALID_TYPE, instr->node, INVALID_ENUM_TYPE_INFER_MESSAGE);
 		return ANALYZE_STAGE_FAILED;
 	}
 
-	const struct result result = analyze_propagate_enum_scope(ctx, (struct mir_instr_decl_ref *)instr, slot_type);
+	const struct result result = analyze_propagate_inferred_type(ctx, instr, slot_type);
 	if (result.state != ANALYZE_PASSED) {
 		return ANALYZE_STAGE_FAILED;
 	}
@@ -9223,20 +9213,38 @@ struct result analyze_resolve_compound_type(struct context *ctx, struct mir_inst
 	return analyze_instr(ctx, &compound->base);
 }
 
-struct result analyze_propagate_enum_scope(struct context *ctx, struct mir_instr_decl_ref *decl_ref, struct mir_type *type) {
-	bassert(decl_ref);
-	bassert(decl_ref->base.state == MIR_IS_PENDING);
-	bassert(type);
-	bassert(type->kind == MIR_TYPE_ENUM);
-	bassert(decl_ref->scope == NULL);
+struct result analyze_propagate_inferred_type(struct context *ctx, struct mir_instr *instr, struct mir_type *type) {
+	bassert(instr);
+	bassert(instr->state == MIR_IS_PENDING);
+	bassert(mir_is_inferred_type(instr->value.type));
+	bassert(!mir_is_inferred_type(type));
 
-	decl_ref->scope                  = type->data.enm.scope;
-	decl_ref->accept_incomplete_enum = false;
+	switch (instr->kind) {
+	case MIR_INSTR_DECL_REF: {
+		struct mir_instr_decl_ref *decl_ref = (struct mir_instr_decl_ref *)instr;
+		decl_ref->base.value.type           = type;
+		if (type->kind == MIR_TYPE_ENUM) {
+			bassert(type->data.enm.scope);
+			decl_ref->scope = type->data.enm.scope;
+		} else {
+			report_error(INVALID_TYPE, instr->node, INVALID_ENUM_TYPE_INFER_MESSAGE);
+			return FAIL;
+		}
+		break;
+	}
+	case MIR_INSTR_COMPOUND: {
+		instr->value.type = type;
+	}
 
-	return analyze_instr(ctx, &decl_ref->base);
+	default:
+		bassert("Unsupported instruction for type propagation.");
+		break;
+	}
+
+	return analyze_instr(ctx, instr);
 }
 
-static struct result analyze_check_incomplete_struct_inheritance_hierarchy(struct mir_instr *instr) {
+struct result analyze_check_incomplete_struct_inheritance_hierarchy(struct mir_instr *instr) {
 	zone();
 	bassert(instr);
 
@@ -9246,8 +9254,8 @@ static struct result analyze_check_incomplete_struct_inheritance_hierarchy(struc
 	//             pointers. Also we have to explicitly skip them here, because they might be untyped
 	//             (MIR_IS_PENDING) until actual type is inferred from usage (assignment or function call).
 	if (instr->kind == MIR_INSTR_COMPOUND) return_zone(PASS);
-	if (instr->kind == MIR_INSTR_DECL_REF && ((struct mir_instr_decl_ref *)instr)->accept_incomplete_enum) return_zone(PASS);
 	if (mir_is_volatile_int_type(instr)) return_zone(PASS);
+	if (mir_is_inferred_type(instr->value.type)) return_zone(PASS);
 	if (instr->state == MIR_IS_PENDING) return_zone(POSTPONE);
 
 	// 2025-09-24: Actual struct type might be nested in pointer.
@@ -11667,11 +11675,10 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref) {
 			// @Note 2025-12-07: Situation with enum '.FOO' syntax, ths scope must be provided later when enum type is known
 			//                   from the context in analyze pass.
 			return append_instr_decl_ref(ctx,
-			                             .node                   = ident,
-			                             .parent_unit            = unit,
-			                             .rid                    = &ident->data.ident.id,
-			                             .scope_layer            = scope_layer,
-			                             .accept_incomplete_enum = true);
+			                             .node        = ident,
+			                             .parent_unit = unit,
+			                             .rid         = &ident->data.ident.id,
+			                             .scope_layer = scope_layer);
 		}
 
 		return append_instr_member_ptr(ctx, .node = ref, .target_ptr = target, .member_ident = ident);
@@ -12603,6 +12610,7 @@ static void initialize_builtins(struct assembly *assembly) {
 	bt->t_resolve_type_fn      = create_type_fn(&ctx, &(create_type_fn_args_t){.ret_type = bt->t_type});
 	bt->t_resolve_bool_expr_fn = create_type_fn(&ctx, &(create_type_fn_args_t){.ret_type = bt->t_bool});
 	bt->t_placeholer           = create_type_placeholder(&ctx);
+	bt->t_inferred             = create_type_inferred(&ctx);
 
 	provide_builtin_arch(&ctx);
 	provide_builtin_os(&ctx);

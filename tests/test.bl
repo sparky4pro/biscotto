@@ -1,42 +1,34 @@
 #import "std/print"
-#import "std/string"
-#import "std/fs"
 
-// Load content of this file at compile time and bake it to the executable.
-FILE_CONTENT :: load_source#(#file);
+Enm :: enum { A; B; C; }
 
-load_source :: fn (filepath: string_view) []u8 {
-	data :: read_entire_file(filepath) catch panic($);
-	return data;
+func :: fn (v: Enm) {
+	print("%\n", v);
 }
 
 main :: fn () s32 {
-	// Print file content.
 	print("----------------------------------------\n");
-	print("%\n", FILE_CONTENT);
-	print("----------------------------------------\n");
+	e: Enm;
+	e = .B;
+	func(.B);
 
-	// Compute string hash at compile time.
-	strings := [_]string_view.{ "apple", "orange", "banana" };
-	loop i := 0; i < strings.len; i += 1 {
-		// Hash calculated in runtime.
-		hash :: str_hash(strings[i]);
+	/*
+	func(.{});
 
-		// Sometimes can be useful in switch.
-		switch hash {
-			str_hash#("apple") {
-				print("We have an apple.\n");
-			}
-			str_hash#("orange") {
-				print("We have an orange.\n");
-			}
-			str_hash#("banana") {
-				print("We have a banana.\n");
-			}
-			default;
-		}
+	if e == .B {
 	}
 
+	if .B == e {
+	}
+
+	a := 10;
+	if a == .{} {
+	}
+
+	x :: !.B;
+	*/
+
 	print("DONE!\n");
+	print("----------------------------------------\n");
 	return 0;
 }

@@ -1,0 +1,6 @@
+// @ERR_INVALID_TYPE@
+Enm :: enum { A; B; };
+main :: fn () s32 {
+	if .A == .B {}
+	return 0;
+}

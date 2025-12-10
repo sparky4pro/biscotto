@@ -27,6 +27,7 @@ master
 - Fix issues with scope layers in generated types with base types.
 - Allow comptime external functions returning `type`. These are used only as compiler
   internals.
+- Fix general issues with type back-propagation for untyped enums and compounds.
 
 [Modules]
 

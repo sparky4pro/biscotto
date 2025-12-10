@@ -221,6 +221,26 @@ enum_type_deduction_call_with_template :: fn () #test {
 	test_eq(func(10, .B), ABC.B);
 }
 
+enum_default_value_as_untyped_compound :: fn () #test {
+	func :: fn (v: ABC) ABC {
+		return v;
+	};
+	test_eq(func(.{}), ABC.A);
+}
+
+enum_untyped_binop_propagation :: fn () #test {
+	e :: ABC.B;
+	test_true(e == .B);
+	test_true(.B == e);
+	test_false(e == .C);
+	test_false(.C == e);
+}
+
+enum_untyped_init_propagation :: fn () #test {
+	e : ABC = .B;
+	test_true(e == .B);
+	test_false(e == .C);
+}
 
 C :: #import "libc";
 
