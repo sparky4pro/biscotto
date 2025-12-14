@@ -1,32 +1,18 @@
 #import "std/print"
 
-Enm :: enum { A; B; C; }
-
-func :: fn (v: Enm) {
-	print("%\n", v);
-}
 
 main :: fn () s32 {
 	print("----------------------------------------\n");
-	e: Enm;
-	e = .B;
-	func(.B);
 
-	/*
-	func(.{});
+	// a := [_]s32.{ 10, 20 };
+	a := []s32.{};
+	// b := [_]s32.{ 30, 40 };
+	b := []s32.{};
 
-	if e == .B {
-	}
+	x := join_slices(a, b);
+	defer free_slice(&x);
 
-	if .B == e {
-	}
-
-	a := 10;
-	if a == .{} {
-	}
-
-	x :: !.B;
-	*/
+	print("%\n", x);
 
 	print("DONE!\n");
 	print("----------------------------------------\n");

@@ -412,6 +412,26 @@ slice_range :: fn (slice: []?T, start: s64, end: s64 = -1) []T #inline {
 	return []T.{len, auto ptr_shift_bytes(slice.ptr, start * cast(s64) sizeof(T))};
 }
 
+/// Joins two slices into one. New slice is allocated using `preferred_allocator`. In case one of slices
+/// is empty, this function works essentially as [duplicate_slice](#duplicate_slice). Returns an empty
+/// slice in case both input slices are empty.
+///
+/// Allocated memory must be released by [free_slice](#free_slice) call.
+join_slices :: fn (a: []?T, b: []T, preferred_allocator: *Allocator = null, loc := #call_location) ([]T, Error) {
+	if (a.len + b.len) < 1 then return .{}, OK;
+	tmp :: new_slice(T, a.len + b.len, true, preferred_allocator, loc) catch {
+		return .{}, $;
+	};
+
+	if a.len > 0 {
+		memcpy(auto &tmp[0], auto a.ptr, sizeof(T) * auto a.len);
+	}
+	if b.len > 0 {
+		memcpy(auto &tmp[a.len], auto b.ptr, sizeof(T) * auto b.len);
+	}
+	return tmp, OK;
+}
+
 /// Reduce allocated memory in application context temporary allocator storage, but keeps biggest allocated chunk for
 /// the later use.
 ///

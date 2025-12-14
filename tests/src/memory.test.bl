@@ -10,14 +10,14 @@ swap_test_1 :: fn () #test {
 
 swap_test_2 :: fn () #test {
 	Foo :: struct { a: s64; b: s64; c: s64; };
-	
+
 	a := Foo.{10, 20, 30};
 	b := Foo.{30, 20, 10};
 	swap(&a, &b);
 	test_eq(a.a, 30);
 	test_eq(a.b, 20);
 	test_eq(a.c, 10);
-	
+
 	test_eq(b.a, 10);
 	test_eq(b.b, 20);
 	test_eq(b.c, 30);
@@ -161,4 +161,52 @@ new_test_2 :: fn () #test {
 	test_eq(foo_ptr.a, 10);
 	test_eq(foo_ptr.b, 20);
 	free(auto foo_ptr);
+}
+
+slice_join_empty :: fn () #test {
+	a := []s32.{};
+	b := []s32.{};
+
+	x := join_slices(a, b);
+	defer free_slice(&x);
+
+	test_eq(x.len, 0);
+}
+
+slice_join_one_empty :: fn () #test {
+	a := [_]s32.{ 10, 20 };
+	b := []s32.{};
+
+	x := join_slices(a, b);
+	defer free_slice(&x);
+
+	test_eq(x.len, 2);
+	test_eq(x[0], 10);
+	test_eq(x[1], 20);
+}
+
+slice_join_one_empty2 :: fn () #test {
+	a := []s32.{};
+	b := [_]s32.{ 10, 20 };
+
+	x := join_slices(a, b);
+	defer free_slice(&x);
+
+	test_eq(x.len, 2);
+	test_eq(x[0], 10);
+	test_eq(x[1], 20);
+}
+
+slice_join :: fn () #test {
+	a := [_]s32.{ 10, 20 };
+	b := [_]s32.{ 30, 40 };
+
+	x := join_slices(a, b);
+	defer free_slice(&x);
+
+	test_eq(x.len, 4);
+	test_eq(x[0], 10);
+	test_eq(x[1], 20);
+	test_eq(x[2], 30);
+	test_eq(x[3], 40);
 }
