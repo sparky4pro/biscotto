@@ -1080,7 +1080,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       const bool              resume) {
 	const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
 	// Reset eventual previous failed state.
-	vm->aborted = false;
+	vm->aborted                    = false;
 	const u64 prev_is_comptime_run = vm_override_var(vm, vm->assembly->is_comptime_run, true);
 
 	if (!resume) {
@@ -2261,8 +2261,11 @@ void eval_instr_arg(struct virtual_machine UNUSED(*vm), struct mir_instr_arg *ar
 	bassert(arg_data && isflag(arg_data->flags, FLAG_COMPTIME));
 
 	struct mir_instr_call *call = arg_data->generation_call;
+
+	bassert(call->base.kind == MIR_INSTR_CALL);
 	bassert(call && "No compile-time known arguments provided to the function argument evaluator!");
 	bassert(arg->i < sarrlenu(call->args) && arg->i >= 0 && "Argument index is out of the range!");
+
 	arg->base.value.data = sarrpeek(call->args, arg->i)->value.data;
 }
 

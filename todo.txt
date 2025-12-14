@@ -9,8 +9,14 @@ Direct access to type struct info members crashes the compiler.
 
 expected_k_offset := outer_info.members[0].offset_bytes;
 
-@compiler 5
+@compiler 4
 Check mutability of member_ptr and addrof in general after recent changes.
+
+@compiler 4
+Check is we cannot somehow reduce temp allocas.
+
+For example on unroll generation, we create temp for comptime values which cannot be converted to
+constants. Cannot we use LLVM const GEP instead if it's a thing?
 
 @compiler 2
 Introduce #nocomptime directive to mark functions which should never be executed in compile time?

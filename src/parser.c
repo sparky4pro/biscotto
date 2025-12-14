@@ -2267,6 +2267,25 @@ struct ast *parse_decl(struct context *ctx) {
 			return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
 		}
 
+		// Propagate declaration name in case of type/function declaration.
+		struct ast *value = decl->data.decl_entity.value;
+		if (value->kind == AST_EXPR_TYPE) {
+			struct ast *type = value->data.expr_type.type;
+			switch (type->kind) {
+			case AST_TYPE_ARR:
+				type->data.type_arr.user_id = &ident->data.ident.id;
+				break;
+			case AST_TYPE_ENUM:
+				type->data.type_enm.user_id = &ident->data.ident.id;
+				break;
+			case AST_TYPE_FN_GROUP:
+				type->data.type_fn_group.user_id = &ident->data.ident.id;
+				break;
+			default:
+				break;
+			}
+		}
+
 		if (isnotflag(decl->data.decl.flags, FLAG_EXTERN)) {
 			if (!decl->data.decl_entity.value) {
 				report_error(EXPECTED_INITIALIZATION, tok_assign, CARET_AFTER, "Expected binding of declaration to some value.");

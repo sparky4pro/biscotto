@@ -452,16 +452,16 @@ struct mir_type {
 	bool can_use_cache;
 
 	union {
-		struct mir_type_int         integer;
-		struct mir_type_fn          fn;
-		struct mir_type_fn_group    fn_group;
-		struct mir_type_ptr         ptr;
-		struct mir_type_real        real;
-		struct mir_type_array       array;
-		struct mir_type_struct      strct;
-		struct mir_type_enum        enm;
-		struct mir_type_null        null;
-		struct mir_type_poly        poly;
+		struct mir_type_int      integer;
+		struct mir_type_fn       fn;
+		struct mir_type_fn_group fn_group;
+		struct mir_type_ptr      ptr;
+		struct mir_type_real     real;
+		struct mir_type_array    array;
+		struct mir_type_struct   strct;
+		struct mir_type_enum     enm;
+		struct mir_type_null     null;
+		struct mir_type_poly     poly;
 	} data;
 
 	bmagic_member
@@ -542,7 +542,9 @@ struct mir_instr {
 
 #if defined(BL_DEBUG) || defined(BL_ASSERT_ENABLE)
 	enum mir_instr_kind _orig_kind;
+	u64                 _orig_id;
 #endif
+
 	s32  ref_count;
 	bool is_implicit;
 	bmagic_member
@@ -654,6 +656,8 @@ struct mir_instr_arg {
 
 struct mir_instr_const {
 	struct mir_instr base;
+	// 2025-12-15: Optionally set in case unroll needs stack allocation.
+	struct mir_instr *tmp_var;
 };
 
 struct mir_instr_load {
@@ -733,7 +737,6 @@ struct mir_instr_type_struct {
 	struct mir_instr base;
 	// fwd_decl is optional pointer to forward declaration of this structure type.
 	struct mir_instr *fwd_decl;
-	struct id        *user_id;
 	struct scope     *scope;
 	hash_t            scope_layer;
 	mir_instrs_t     *members;

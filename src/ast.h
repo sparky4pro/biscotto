@@ -205,6 +205,7 @@ struct ast_decl_variant {
 struct ast_type_arr {
 	struct ast *elem_type;
 	struct ast *len;
+	struct id  *user_id;
 
 	// Array element count might be inferred from count of elements of compound initializer.
 	// This way we allow [_]s32.{ 1, 2, 3 } syntax to automatically "replace" underscore with
@@ -243,6 +244,7 @@ struct ast_type_fn {
 
 struct ast_type_fn_group {
 	ast_nodes_t *variants;
+	struct id   *user_id;
 };
 
 struct ast_type_struct {
@@ -257,6 +259,7 @@ struct ast_type_struct {
 struct ast_type_enum {
 	struct scope *scope;
 	struct ast   *type;
+	struct id    *user_id;
 	ast_nodes_t  *variants;
 	bool          is_flags;
 };

@@ -86,16 +86,16 @@ structure_initialization :: fn () #test {
 
 	{
 		foo := Foo.{};
-		assert(foo.i == 0); 
-		assert(foo.j == 0); 
+		assert(foo.i == 0);
+		assert(foo.j == 0);
 	}
 
 	{
 		i := 10;
 		j := 20;
 		foo := Foo.{ i, j };
-		assert(foo.i == i); 
-		assert(foo.j == j); 
+		assert(foo.i == i);
+		assert(foo.j == j);
 	}
 };
 
@@ -115,7 +115,7 @@ pointer_to_self :: fn () #test {
 		bar: *Bar;
 		func: *fn (i: *Bar);
 	};
-	
+
 	foo: Foo;
 	foo.foo = &foo;
 
@@ -126,7 +126,7 @@ PointerToSelfNestedA :: struct {
 	func: PointerToSelfNestedB;
 	bar: *PointerToSelfNestedA;
 };
-	
+
 PointerToSelfNestedB :: *fn(i: *PointerToSelfNestedA);
 
 pointer_to_self_nested :: fn () #test {
@@ -134,7 +134,7 @@ pointer_to_self_nested :: fn () #test {
 		bar: *Bar;
 		func: *fn (i: *Bar);
 	};
-	
+
 	foo: Foo;
 	foo.foo = &foo;
 
@@ -176,4 +176,15 @@ size :: fn () #test {
 	T1 :: struct { _: s32; _: s32 };
 	T2 :: struct { a: s32; b: s32 };
 	test_eq(sizeof(T1), sizeof(T2));
+}
+
+decl_name_propagation :: fn () #test {
+	foo: struct { a: s32; };
+	Foo :: struct { a: s32; };
+
+	info_foo :: cast(*TypeInfoStruct)typeinfo(foo);
+	info_Foo :: cast(*TypeInfoStruct)typeinfo(Foo);
+
+	test_eq(info_foo.name, "s.{s32}");
+	test_eq(info_Foo.name, "Foo");
 }

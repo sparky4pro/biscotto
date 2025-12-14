@@ -28,6 +28,10 @@ master
 - Allow comptime external functions returning `type`. These are used only as compiler
   internals.
 - Fix general issues with type back-propagation for untyped enums and compounds.
+- Fix broken multi-return for comptime functions returning types which are not directly convertible
+  to constants.
+- Fix type naming. Use declaration name only for the top-level direct declarations.
+- Fix missing scope layer on compound initializer designator resolve.
 
 [Modules]
 

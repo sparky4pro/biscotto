@@ -300,7 +300,9 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr) {
 		return;
 	}
 
-	if (!instr->value.is_comptime || instr->state != MIR_IS_COMPLETE) {
+	const bool is_ptr  = instr->value.type ? mir_is_pointer_type(instr->value.type) : false;
+
+	if (!instr->value.is_comptime || instr->state != MIR_IS_COMPLETE || !is_ptr) {
 		fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
 		return;
 	}
