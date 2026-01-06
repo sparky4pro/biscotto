@@ -374,7 +374,7 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .kind       = STRING,
 	        .name       = "--output",
-	        .help       = "Specify name of the output binary.",
+	        .help       = "Specify name of the output binary. The extension is included automatically, if any.",
 	        .property.s = &opt.target->name,
 	    },
 	    {

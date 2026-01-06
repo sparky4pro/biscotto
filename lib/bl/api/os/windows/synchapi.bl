@@ -42,7 +42,9 @@ EnterCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "Ent
 LeaveCriticalSection  :: fn (lpCriticalSection: LPCRITICAL_SECTION) #extern "LeaveCriticalSection";
 TryEnterCriticalSection :: fn (lpCriticalSection: LPCRITICAL_SECTION ) BOOL #extern "TryEnterCriticalSection";
 SleepConditionVariableCS :: fn (ConditionVariable: PCONDITION_VARIABLE, CriticalSection: PCRITICAL_SECTION, dwMilliseconds: DWORD) BOOL #extern "SleepConditionVariableCS";
+SleepConditionVariableSRW :: fn (ConditionVariable: PCONDITION_VARIABLE, SRWLock: PSRWLOCK, dwMilliseconds: DWORD, Flags: ULONG) BOOL #extern "SleepConditionVariableSRW";
 WakeConditionVariable :: fn (ConditionVariable: PCONDITION_VARIABLE) #extern "WakeConditionVariable"
+WakeAllConditionVariable :: fn (ConditionVariable: PCONDITION_VARIABLE) #extern "WakeAllConditionVariable"
 InitializeConditionVariable :: fn (ConditionVariable: PCONDITION_VARIABLE) #extern "InitializeConditionVariable";
 InitializeSRWLock :: fn (SRWLock: PSRWLOCK) #extern "InitializeSRWLock";
 ReleaseSRWLockExclusive :: fn (SRWLock: PSRWLOCK) #extern "ReleaseSRWLockExclusive";

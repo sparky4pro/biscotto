@@ -226,6 +226,9 @@ void check_compiler(void) {
 	if (!strok(cl)) {
 		nob_log(NOB_ERROR, "Cannot find 'cl.exe' compiler. Have you forgot to run 'vcvars64.bat' to inject development environment?");
 		exit(1);
+	} else {
+		char *VCToolsVersion = getenv("VCToolsVersion");
+		nob_log(NOB_INFO, "Using MSVC toolchain: %s.", VCToolsVersion ? VCToolsVersion : "UNKNOWN");
 	}
 #endif
 }

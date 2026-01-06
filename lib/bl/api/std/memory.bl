@@ -465,6 +465,23 @@ ptr_diff :: fn (a: *?T1, b: *?T2) s64 #inline {
 	return (cast(s64) a) - (cast(s64) b);
 }
 
+Optional :: fn (TValue: type #comptime) type #comptime{
+	return struct {
+		value:     TValue;
+		has_value: bool;
+	};
+}
+
+set_optional :: fn (opt: *?T, v: T.value) {
+	opt.value     = v;
+	opt.has_value = true;
+}
+
+set_optional_ref :: fn (opt: *?T, v: *T.value) {
+	memcpy(auto &opt.value, auto v, sizeof(@v));
+	opt.has_value = true;
+}
+
 #scope_private
 #import "std/pool"
 

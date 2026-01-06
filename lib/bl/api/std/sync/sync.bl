@@ -106,3 +106,7 @@ condition_wait :: fn (condition: *Condition, mutex: *Mutex) Error #inline {
 condition_signal :: fn (condition: *Condition) Error #inline {
 	return _condition_signal(condition);
 }
+
+condition_signal_all :: fn (condition: *Condition) Error #inline {
+	return _condition_signal_all(condition);
+}

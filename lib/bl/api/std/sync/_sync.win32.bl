@@ -84,7 +84,7 @@ _condition_wait :: fn (condition: *_Condition, mutex: *_Mutex) Error #inline {
 	using MutexKind;
 	switch mutex.kind {
 		NORMAL {
-			panic();
+			SleepConditionVariableSRW(condition, &mutex.data.srw, INFINITE, 0);
 		}
 		RECURSIVE {
 			SleepConditionVariableCS(condition, &mutex.data.cs, INFINITE);
@@ -95,6 +95,11 @@ _condition_wait :: fn (condition: *_Condition, mutex: *_Mutex) Error #inline {
 
 _condition_signal :: fn (condition: *_Condition) Error #inline {
 	WakeConditionVariable(condition);
+	return OK;
+}
+
+_condition_signal_all :: fn (condition: *_Condition) Error #inline {
+	WakeAllConditionVariable(condition);
 	return OK;
 }
 

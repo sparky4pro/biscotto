@@ -103,6 +103,16 @@ _condition_signal :: fn (condition: *_Condition) Error #inline {
 	return OK;
 }
 
+_condition_signal_all :: fn (condition: *_Condition) Error #inline {
+	state :: pthread_cond_broadcast(condition);
+	if state != 0 {
+		estr :: cast(*u8) C.strerror(state);
+		return error("Cannot broadcast condition variable: '%' (%).", ctostr(auto estr), state);
+	}
+	return OK;
+}
+
+
 #scope_private
 
 #import "os/posix/pthread"

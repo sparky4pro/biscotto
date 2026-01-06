@@ -4,6 +4,10 @@ Function literals in group does not accept hash directives. Flags are now assign
 @bug 5
 The auto cast is not properly evaluated in compile time. Evaluation is skipped because we do not have the type yet.
 
+@bug 3
+Intrinsic functions (lot of math stuff) cannot be directly called in compile time using #() call.
+
+
 @bug 5
 Direct access to type struct info members crashes the compiler.
 

@@ -569,6 +569,15 @@ mat3_mul_v3 :: fn (mat: *mat3, v: v3) v3 #inline {
 	return out;
 }
 
+quat_to_yaw_pitch :: fn (q: quat) (yaw: f32, pitch: f32) #inline {
+	// Assuming camera forward is -Z
+	forward :: normalize(quat_rotate_v3(q, .{ 0.f, 0.f, -1.f }));
+	yaw     :: math.atan2(forward.x, -forward.z);
+	pitch   :: math.asin(math.clamp(forward.y, -1.f, 1.f));
+	return yaw, pitch;
+}
+
+
 quat_normalize :: fn (q: quat) quat #inline {
 	return normalize(q);
 }
@@ -686,6 +695,62 @@ quat_for :: fn (dir: v3, up: v3) quat {
 
 	return mat4_get_quat(&m);
 }
+
+quat_slerp :: fn (_a: quat, _b: quat, t: f32) quat {
+	a := normalize(_a);
+	b := normalize(_b);
+
+	d := dot(a, b);
+
+	if d < 0.f {
+		d = -d;
+		b = mul(b, -1.f);
+	}
+
+	d = math.clamp(d, -1.f, 1.f);
+	if d > 0.9995f {
+		return normalize(quat.{
+			math.lerp(a.x, b.x, t),
+			math.lerp(a.y, b.y, t),
+			math.lerp(a.z, b.z, t),
+			math.lerp(a.w, b.w, t),
+			});
+	}
+
+	theta0 :: math.acos(d);
+	sin_theta0 :: math.sin(theta0);
+
+	if sin_theta0 < math.F32_EPSILON {
+		return normalize(quat.{
+				math.lerp(a.x, b.x, t),
+				math.lerp(a.y, b.y, t),
+				math.lerp(a.z, b.z, t),
+				math.lerp(a.w, b.w, t),
+			});
+	}
+
+	theta :: theta0 * t;
+	sin_theta :: math.sin(theta);
+
+	s0 :: math.sin(theta0 - theta) / sin_theta0;
+	s1 :: sin_theta / sin_theta0;
+
+	return normalize(quat.{
+		(a.x * s0) + (b.x * s1),
+		(a.y * s0) + (b.y * s1),
+		(a.z * s0) + (b.z * s1),
+		(a.w * s0) + (b.w * s1)
+		});
+}
+
+quat_nlerp :: fn (a: quat, b: quat, t: f32) quat {
+	_b := b;
+	if dot(a, _b) < 0.f {
+		_b = mul(_b, -1.f);
+	}
+	return normalize(lerp(a, _b, t));
+}
+
 
 lerp :: fn (a: ?T, b: T, t: f32) T #inline {
 #if T == v2 || T == v3 || T == v4 {

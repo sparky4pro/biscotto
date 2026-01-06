@@ -123,7 +123,7 @@ str_init :: fn {
 	};
 }
 
-/// Just wrapper arounf [str_init](modules_string.html#str_init).
+/// Just wrapper around [str_init](modules_string.html#str_init).
 str_make :: fn {
 	fn (allocator: *Allocator) string #inline {
 		str: string;
