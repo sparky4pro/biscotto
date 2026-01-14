@@ -180,7 +180,7 @@ void blc(void) {
 				cmd_append(&cmd, temp_sprintf("%s/" SV_Fmt, LLVM_LIB_DIR, SV_Arg(lib)));
 		}
 
-		cmd_append(&cmd, "-link", "-LTCG", "-incremental:no", "-opt:ref", "-subsystem:console", "-NODEFAULTLIB:MSVCRTD.lib");
+		cmd_append(&cmd, "-link", "-LTCG", "-incremental:no", "-opt:ref", "-subsystem:console", "-NODEFAULTLIB:MSVCRTD.lib", "-OPT:NOREF");
 
 		cmd_append(&cmd,
 		           BUILD_DIR "/libyaml/libyaml.lib",

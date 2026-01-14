@@ -32,6 +32,8 @@ master
   to constants.
 - Fix type naming. Use declaration name only for the top-level direct declarations.
 - Fix missing scope layer on compound initializer designator resolve.
+- Fix linking issues on MSVC 14.50.35717 where aggresive linking optimizations remove implicitly used
+  builtin functions from C.
 
 [Modules]
 
