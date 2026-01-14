@@ -34,11 +34,16 @@ master
 - Fix missing scope layer on compound initializer designator resolve.
 - Fix linking issues on MSVC 14.50.35717 where aggressive linking optimizations remove implicitly used
   built-in functions from C.
+- Print VCToolsVersion used for compiler compilation.
 
 [Modules]
 
 memory:
 - Add `join_slices` helper function.
+- Add `Optional` value wrapper.
+
+debug:
+- Extend `measure_elapsed_ms_end` to provide just elapsed time without any logs.
 
 std/type_utils:
 - Add various type-related utilities, mostly moved from global `a.bl` (see deprecated section).
@@ -57,12 +62,17 @@ std/print:
 extra/glm:
 - Add version of `abs` function for vectors.
 - Add helpers for column extraction from `mat4`.
+- Add `quat_slerp` function.
+- Add `quat_to_yaw_pitch` function.
 
 std/static_array:
 - Add `sarray_push_all` function.
 
 std/math:
 - Add `sign` function.
+
+std/sync:
+- Add missing support for condition variable broadcast `condition_signal_all`.
 
 [Documentation]
 - Add documentation for comptime call.
