@@ -1,6 +1,6 @@
 #load "extra/build-lib-common.bl"
 
-build :: fn () #build_entry {
+main :: fn () s32 {
 	tmpdir :: get_temporary();
 	unzip("SDL3-3.2.8.zip");
 
@@ -71,4 +71,5 @@ build :: fn () #build_entry {
 
 	set_cwd(rootdir);
 	os_execute("rm -rf SDL3-3.2.8");
+	return 0;
 }

@@ -1,5 +1,6 @@
-build :: fn () #build_entry {
+main :: fn () s32 {
 	lib :: add_library("test");
 	add_unit(lib, "test.bl");
 	compile(lib);
+	return 0;
 }

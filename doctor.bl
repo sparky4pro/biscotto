@@ -1,4 +1,4 @@
-#!blc -silent-run
+#!blc -run
 #import "std/fs"
 #import "std/io"
 #import "std/print"
@@ -313,7 +313,7 @@ test_file :: fn (results: *[..]Result, filepath: string_view, kind: TestKind, co
 		}
 
 		TEST_RUN {
-			if os_execute(tprint("% % % % %", compiler, compiler_args, "--no-bin --run-tests --tests-minimal-output", main_file, filepath)) != 0 {
+			if os_execute(tprint("% % % % %", compiler, compiler_args, "-test --no-bin --tests-minimal-output", main_file, filepath)) != 0 {
 				result.state |= FAILED_RUN;
 			}
 		}

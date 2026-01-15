@@ -217,7 +217,7 @@ static bool create_auxiliary_dir_tree_if_not_exist(const str_t _path, str_buf_t 
 // PUBLIC
 // =================================================================================================
 struct target *target_new(const char *name) {
-	bassert(name && "struct assembly name not specified!");
+	bassert(name && "Assembly name not specified!");
 	struct target *target = bmalloc(sizeof(struct target));
 	memset(target, 0, sizeof(struct target));
 	bmagic_set(target);

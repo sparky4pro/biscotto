@@ -28,7 +28,8 @@ extern "C" {
 #define __FILENAME__
 #endif
 
-#define BL_STATIC_ASSERT(c, e) _Static_assert((c), e)
+#define BL_STATIC_ASSERT(c, e)          _Static_assert((c), e)
+#define BL_OBSOLETE_SINCE(major, minor, text) _Static_assert(bl_version_hash((major), (minor), 0) >= bl_version_hash(BL_VERSION_MAJOR, BL_VERSION_MINOR, 0), "Obsolete: " #text ".")
 
 typedef enum { LOG_ASSERT,
 	           LOG_ABORT,

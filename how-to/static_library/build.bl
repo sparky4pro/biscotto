@@ -1,5 +1,4 @@
-build :: fn () #build_entry {
-
+main :: fn () s32 {
 	// Build the C library first.
 	switch PLATFORM {
 		Platform.WINDOWS {
@@ -22,4 +21,5 @@ build :: fn () #build_entry {
 
 	// Compile the target.
 	compile(exe);
+	return 0;
 }

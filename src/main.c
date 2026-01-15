@@ -208,7 +208,7 @@ void print_help(FILE *stream, struct getarg_opt *opts) {
 	                   "Alternative usage:\n"
 	                   "  blc [options] <-build> [build-arguments]\n"
 	                   "  blc [options] <-init>  [project-name]\n"
-	                   "  blc [options] <-run>   <source-file> [arguments] [forwarded-arguments]\n\n"
+	                   "  blc [options] <-run>   <source-file> [arguments]\n\n"
 	                   "Options:\n";
 	fprintf(stream, "%s", text);
 	struct getarg_opt *opt;
@@ -322,6 +322,9 @@ int main(s32 argc, char *argv[]) {
 #define ID_DUMP_SCOPES_PARENTING 9
 #define ID_DUMP_SCOPES_INJECTION 10
 
+	BL_OBSOLETE_SINCE(0, 14, "-silent-run");
+	BL_OBSOLETE_SINCE(0, 14, "--run-tests");
+
 	struct getarg_opt optlist[] = {
 	    {
 	        .name = "-init",
@@ -337,7 +340,7 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .name = "-run",
 	        .help =
-	            "Execute BL program using interpreter and exit. The compiler expects <source-file> "
+	            "Execute main function using interpreter and exit. The compiler expects <source-file> "
 	            "after '-run' flag, the file name and all following command line arguments are "
 	            "passed into the executed program and ignored by compiler itself. Use as '-run "
 	            "<source-file> [arguments]'.",
@@ -345,14 +348,13 @@ int main(s32 argc, char *argv[]) {
 	    },
 	    {
 	        .name = "-silent-run",
-	        .help =
-	            "Execute BL program using interpreter and exit. The compiler expects <source-file> "
-	            "after '-silent-run' flag, the file name and all following command line arguments "
-	            "are passed into the executed program and ignored by compiler itself. Use as "
-	            "'-silent-run <source-file> [arguments]'. This flag also suppress all compiler "
-	            "console outputs. Basically it combines '-run' and '--silent' into a single flag. "
-	            "This can be useful in case the compiler is called implicitly from UNIX shebang.",
-	        .id = ID_SILENT_RUN,
+	        .help = "[Obsolete, use '-run' instead, and '--no-warning' to suppress warnings if needed.]",
+	        .id   = ID_SILENT_RUN,
+	    },
+	    {
+	        .name       = "-test",
+	        .property.b = &opt.target->run_tests,
+	        .help       = "Execute all unit tests in compile time.",
 	    },
 	    {
 	        .name = "-doc",
@@ -443,7 +445,7 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .name       = "--silent",
 	        .property.b = &opt.builder.silent,
-	        .help       = "Disable compiler console logging.",
+	        .help       = "Disable compiler console logging levels info and warning.",
 	    },
 	    {
 	        .name       = "--no-finished-report",
@@ -567,12 +569,12 @@ int main(s32 argc, char *argv[]) {
 	    {
 	        .name       = "--run-tests",
 	        .property.b = &opt.target->run_tests,
-	        .help       = "Execute all unit tests in compile time.",
+	        .help       = "[Obsolete, use '-test'.]",
 	    },
 	    {
 	        .name       = "--tests-minimal-output",
 	        .property.b = &opt.target->tests_minimal_output,
-	        .help       = "Reduce compile-time tests (--run-tests) output (remove results section).",
+	        .help       = "Disable test results section.",
 	    },
 	    {
 	        .name       = "--no-api",
@@ -650,7 +652,7 @@ int main(s32 argc, char *argv[]) {
 			EXIT(EXIT_FAILURE);
 		case ID_BUILD: // Build pipeline.
 			opt.target->kind = ASSEMBLY_BUILD_PIPELINE;
-			opt.target->run  = false;
+			opt.target->run  = true;
 			index += 1;
 			// Rest of arguments is forwarded into the build script.
 			goto SKIP;
@@ -668,6 +670,7 @@ int main(s32 argc, char *argv[]) {
 			opt.target->kind    = ASSEMBLY_EXECUTABLE;
 			opt.target->run     = true;
 			opt.target->no_llvm = true;
+			no_finish_msg       = true;
 			if (index + 1 == argc || argv[index + 1][0] == '-') {
 				builder_error("Expected file name after '-run' flag.");
 				EXIT(EXIT_FAILURE);
@@ -702,11 +705,12 @@ int main(s32 argc, char *argv[]) {
 				builder_error("Could not create build file!");
 				EXIT(EXIT_FAILURE);
 			}
-			const char *build_function_code_template = "build :: fn () #build_entry {\n"
+			const char *build_function_code_template = "main :: fn () s32 {\n"
 			                                           "\texe := add_executable(\"%s\");\n"
 			                                           "\tset_output_dir(exe,\"bin\");\n"
 			                                           "\tadd_unit(exe, \"src/main.bl\");\n"
-			                                           "\tcompile(exe);\n"
+			                                           "\tcompile(exe) catch return $.code;\n"
+			                                           "\treturn 0;\n"
 			                                           "}\n";
 
 			fprintf(build_file, build_function_code_template, project_name);

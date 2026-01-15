@@ -37,7 +37,6 @@ static void print_scopes_run(struct assembly *assembly) {
 
 // Virtual Machine
 void vm_entry_run(struct assembly *assembly);
-void vm_build_entry_run(struct assembly *assembly);
 void vm_tests_run(struct assembly *assembly);
 
 const char *supported_targets[] = {
@@ -127,10 +126,6 @@ static void entry_run(struct assembly *assembly) {
 	builder.last_script_mode_run_status = assembly->vm_run.last_execution_status;
 }
 
-static void build_entry_run(struct assembly *assembly) {
-	vm_build_entry_run(assembly);
-}
-
 static void tests_run(struct assembly *assembly) {
 	vm_tests_run(assembly);
 	builder.test_failc = assembly->vm_run.last_execution_status;
@@ -176,7 +171,6 @@ static void setup_assembly_pipeline(struct assembly *assembly) {
 		if (t->print_scopes) arrput(*stages, &print_scopes_run);
 		if (t->vmdbg_enabled) arrput(*stages, &attach_dbg);
 		if (t->run) arrput(*stages, &entry_run);
-		if (t->kind == ASSEMBLY_BUILD_PIPELINE) arrput(*stages, build_entry_run);
 		if (t->run_tests) arrput(*stages, tests_run);
 		if (t->vmdbg_enabled) arrput(*stages, &detach_dbg);
 	}
@@ -315,7 +309,8 @@ static int compile(struct assembly *assembly) {
 	if (builder.errorc) return builder.max_error;
 	if (assembly->target->run) return builder.last_script_mode_run_status;
 	if (assembly->target->run_tests) return builder.test_failc;
-	return EXIT_SUCCESS;
+
+	return COMPILE_OK;
 }
 
 // =================================================================================================
@@ -408,6 +403,13 @@ struct target *builder_add_target(const char *name) {
 	bassert(builder.default_target && "Default target must be set first!");
 	struct target *target = target_dup(name, builder.default_target);
 	bassert(target);
+
+	// @Note 2026-01-15: Newly created targets in the build entry source are created as a duplicates
+	//                   of the original target to propagate command line passed build options, but
+	//                   some of them must be reset to default.
+	target->kind = ASSEMBLY_EXECUTABLE;
+	target->run  = false;
+
 	arrput(builder.targets, target);
 	return target;
 }

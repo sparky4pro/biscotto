@@ -1,6 +1,6 @@
 #load "../build-lib-common.bl"
 
-build :: fn () #build_entry {
+main :: fn () s32 {
 	tmpdir :: get_temporary();
 	unzip("libclipboard-1.1.zip");
 
@@ -110,4 +110,5 @@ build :: fn () #build_entry {
 
 	set_cwd(rootdir);
 	os_execute("rm -rf libclipboard-1.1");
+	return 0;
 }

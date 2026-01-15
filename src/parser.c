@@ -366,8 +366,9 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum ha
 	case HD_NONE:
 	case HD_STATIC_IF:
 		babort("Invalid directive!");
-	case HD_TEST_FN:
 	case HD_BUILD_ENTRY:
+		report_warning(tok_directive, CARET_WORD, "Directive is obsolete. Use regular main function as a build entry.");
+	case HD_TEST_FN:
 	case HD_NO_INIT:
 	case HD_FLAGS:
 	case HD_INLINE:

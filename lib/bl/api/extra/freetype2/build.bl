@@ -1,6 +1,6 @@
 #load "../build-lib-common.bl"
 
-build :: fn () #build_entry {
+main :: fn () s32 {
 	tmpdir :: get_temporary();
 	rootdir :: get_cwd();
 
@@ -81,4 +81,5 @@ build :: fn () #build_entry {
 		}
 		default;
 	}
+	return 0;
 }

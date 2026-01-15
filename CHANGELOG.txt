@@ -35,6 +35,7 @@ master
 - Fix linking issues on MSVC 14.50.35717 where aggressive linking optimizations remove implicitly used
   built-in functions from C.
 - Print VCToolsVersion used for compiler compilation.
+- Build pipeline now use regular main function as an entry point.
 
 [Modules]
 
@@ -98,6 +99,9 @@ std/sync:
 `member_offset_bytes`          - Use 'member_offset_bytes' in 'std/type_utils' module.
 `member_offset_bytes_comptime` - Use 'member_offset_bytes' in 'std/type_utils' module.
 `member_offset_bytes2`         - Use 'member_offset_bytes' in 'std/type_utils' module.
+`#build_entry`                 - Use regular main function instead.
+`-silent-run`                  - Use '-run' instead in combination with '--no-warning'.
+`--run-tests`                  - Use '-test'.
 
 [MISC]
 - Add gdb python pretty printers for some BL types.

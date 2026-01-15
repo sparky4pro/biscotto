@@ -102,12 +102,13 @@ void vm_tests_run(struct assembly *assembly) {
 	assembly->vm_run.last_execution_status = failed_count;
 }
 
+BL_OBSOLETE_SINCE(0, 14, "vm_build_entry_run");
 void vm_build_entry_run(struct assembly *assembly) {
 	struct virtual_machine *vm     = &assembly->vm;
 	struct mir_fn          *entry  = assembly->vm_run.build_entry;
 	const struct target    *target = assembly->target;
 	if (!entry) {
-		builder_error("struct assembly '%s' has no build entry function!", assembly->target->name);
+		builder_error("Assembly '%s' has no build entry function!", assembly->target->name);
 		assembly->vm_run.last_execution_status = EXIT_FAILURE;
 		return;
 	}
@@ -126,9 +127,13 @@ void vm_entry_run(struct assembly *assembly) {
 	struct virtual_machine *vm     = &assembly->vm;
 	struct mir_fn          *entry  = assembly->vm_run.entry;
 	const struct target    *target = assembly->target;
-	builder_info("\nExecuting 'main' in compile time...");
 	if (!entry) {
-		builder_error("struct assembly '%s' has no entry function!", assembly->target->name);
+		if (assembly->target->kind == ASSEMBLY_BUILD_PIPELINE) {
+			vm_build_entry_run(assembly);
+			return;
+		}
+
+		builder_error("Assembly '%s' has no entry function!", assembly->target->name);
 		assembly->vm_run.last_execution_status = EXIT_FAILURE;
 		return;
 	}
@@ -148,9 +153,6 @@ void vm_entry_run(struct assembly *assembly) {
 		if (ret_ptr) {
 			struct mir_type *ret_type = fn_type->data.fn.ret_type;
 			result                    = (s32)vm_read_int(ret_type, ret_ptr);
-			builder_info("Execution finished with state: %d\n", result);
-		} else {
-			builder_info("Execution finished without errors");
 		}
 	} else {
 		builder_warning("Execution finished with errors");

@@ -1,12 +1,13 @@
 #import "std/test"
 #import "std/string"
 
-build :: fn () #build_entry {
+main :: fn () s32 {
 	defer temporary_release();
 
 	exe := add_executable("build_api_test");
 	test_eq(exe.kind, TargetKind.EXECUTABLE);
 	test_eq(exe.build_mode, BuildMode.DEBUG);
+	test_false(exe.run);
 #if PLATFORM == Platform.WINDOWS {
 	test_eq(exe.debug_info_kind, DebugInfo.CODE_VIEW);
 } else {
@@ -21,4 +22,5 @@ build :: fn () #build_entry {
 	test_eq(triple_to_string(exe.triple), triple_to_string(expected_triple));
 
 	// @Incomplete: add more test here.
+	return 0;
 }

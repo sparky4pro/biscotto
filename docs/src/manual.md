@@ -78,14 +78,17 @@ One common approach to adjusting the build settings configuration is having some
 To use the BL compiler-integrated build pipeline, we have to create the configuration file first. The compiler expects the project's configuration file to be called `build.bl`. We can reuse our "Hello World" program from the previous chapter, and create `build.bl` file next to it. The most basic build configuration looks like this:
 
 ```bl
-build :: fn () #build_entry {
+main :: fn () s32 {
     exe := add_executable("hello");
 	add_unit(exe, "hello.bl");
     compile(exe);
+	return 0;
 }
 ```
 
-The function *build* marked as a *build_entry* is later automatically executed by the compiler. Inside the function body, we create a new executable target "hello" by *add_executable* function call. Then we add our `hello.bl` source file into it, and finally, we compile the target.
+When the compiler is invoked with `-build` flag, the `main` function is executed in compile time. Note that [build API](modules_build.html) is injected automatically. Inside the function body, we create a new executable target "hello" by *add_executable* function call (final binary extension is added automatically). Then we add our `hello.bl` source file into it, and finally, we compile the target.
+
+Note that the `command_line_arguments` builtin array will contain all arguments passed after the `-build` flag.
 
 ## Compilation
 
@@ -1485,12 +1488,12 @@ is_equal :: fn { // function group
 
 ## Comptime Function Call
 
-BL provides an easy way to execute any function at compile time using explicit call notation: `<function name>#()`. Once the function is called during compilation, the return value will be exposed as a constant in the final binary. Note that all arguments of a call must be known at compile time. 
+BL provides an easy way to execute any function at compile time using explicit call notation: `<function name>#()`. Once the function is called during compilation, the return value will be exposed as a constant in the final binary. Note that all arguments of a call must be known at compile time.
 
 ```bl
 @@@examples/comptime_call.bl
 ```
-       
+
 ## Function Directives
 
 The function directives can be specified after the function return type declaration:
@@ -1655,13 +1658,13 @@ B :: 2147483647; // s32
 C :: 2147483648; // s64
 ```
 
-When the type is known from the context or explicitly defined, the compiler will use this type in all *volatile typed* expressions. 
+When the type is known from the context or explicitly defined, the compiler will use this type in all *volatile typed* expressions.
 
 ```bl
-V : u64 : 1 << (60+3); 
+V : u64 : 1 << (60+3);
 ```
 
-In this example, all literals perfectly fit into `s32` type, however, variable forces the type to be `u64` in the declaration; thus all (even nested) literals are evaluated in context of `u64`, resulting correctly in `0x8000000000000000` value. 
+In this example, all literals perfectly fit into `s32` type, however, variable forces the type to be `u64` in the declaration; thus all (even nested) literals are evaluated in context of `u64`, resulting correctly in `0x8000000000000000` value.
 
 Examples of other possible notation:
 
@@ -2392,10 +2395,10 @@ x86_64-pc-windows-msvc:
   # All libs and dlls are located in 'win32' directory next to the module
   # configuration file.
   linker_lib_path: "win32"
-  
+
   # Use static library when compiling native code.
   linker_opt: "glfw3_static.lib"
-  
+
   # Use dynamic version (dll) when module is used in VM or compile-time.
   link_comptime: "glfw3"
 ```
@@ -2562,7 +2565,6 @@ Report warning in compile-time.
 # Directives
 
 - `#base` - See [here](manual.html#Implicit-Composition).
-- `#build_entry` - See [here](modules_build.html).
 - `#call_location` - See [here](manual.html#Call-Location).
 - `#compiler` - Compiler internal.
 - `#comptime` - Mark symbol as known in compile-time.
@@ -2685,13 +2687,13 @@ Specify binary optimization mode to release. (Same as `-opt=release-fast`).
 
 Execute BL program using interpreter and exit. The compiler expects `<source-file>` after `-run` flag. The file name and all following command line arguments are passed into the executed program and ignored by the compiler itself. Use as `-run <source-file> [arguments]`.
 
+`-test`
+
+Execute all unit tests during compile time.
+
 `-shared`
 
 Compile shared library.
-
-`-silent-run`
-
-Execute BL program using interpreter and exit. The compiler expects `<source-file>` after `-silent-run` flag. The file name and all following command line arguments are passed into the executed program and ignored by the compiler itself. This flag also suppresses all compiler console outputs. Combines `-run` and `--silent` into a single flag. Useful when called implicitly from UNIX shebang.
 
 `--about`
 
@@ -2797,10 +2799,6 @@ Set custom path to the `bl.yaml` configuration file.
 
 Enable/disable splitting of structures passed into the function by value into registers. This feature is supposed to be enabled on System V ABI compatible systems.
 
-`--run-tests`
-
-Execute all unit tests during compile time.
-
 `--scope-dump-injection`
 
 Print scope injection structure in dot Graphviz format.
@@ -2835,7 +2833,7 @@ Print all supported targets and exit. (Cross compilation is not allowed yet!)
 
 `--tests-minimal-output`
 
-Reduce compile-time tests (`--run-tests`) output (removes results section).
+Disable test results section.
 
 `--verbose`
 
@@ -2878,15 +2876,15 @@ Use `blc --config` to change compiler configuration; this command generates a ne
 
 - After a regular compilation process `blc` return 0 on success or a numeric maximum error code on the fail.
 - When `-run` flag is specified `blc` return status returned by executed `main` function on success or numeric maximum error code on fail (compilation error or compile time execution error).
-- When `--run-tests` flag is specified `blc` returns a count of failed tests on success or a numeric maximum error code on a fail.
+- When `-test` flag is specified `blc` returns a count of failed tests on success or a numeric maximum error code on a fail.
 
 
 # Script mode
 
-Programs written in BL can easily act like shell scripts on UNIX systems due to the support of [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) character sequence specified at the first line of the entry file. The `-silent-run` option passed to the compiler reduces all compiler diagnostic output and executes the `main` function using the integrated interpreter. No output binary is produced in such a case. The following example can be directly executed in *bash*.
+Programs written in BL can easily act like shell scripts on UNIX systems due to the support of [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)) character sequence specified at the first line of the entry file. The `-run` option passed to the compiler executes the `main` function using the integrated interpreter. No output binary is produced in such a case. The following example can be directly executed in *bash*.
 
 ```bl
-#!/usr/local/bin/blc -silent-run
+#!/usr/local/bin/blc -run
 
 main :: fn () s32 {
     print("Hello!!!\n");
@@ -2901,7 +2899,7 @@ $ ./main.bl
 
 All command line arguments are forwarded into the executed script and can be accessed via `command_line_arguments` builtin variable. The first argument contains the script name every time.
 
-In case you don't want to use shebang, or your're not on the system supporting it, you can just use `blc -silent-run my-program.bl` in terminal. Note that, there is one limitation: All programs executed using builtin interpreter can use only dynamically loaded libraries, static ones are not supported, basically due to fact, we're not compiling to the native binary, so there is no linking step.
+In case you don't want to use shebang, or your're not on the system supporting it, you can just use `blc -run my-program.bl` in terminal. Note that, there is one limitation: All programs executed using builtin interpreter can use only dynamically loaded libraries, static ones are not supported, basically due to fact, that we're not compiling to the native binary, and there is no linking step.
 
 # Unit Testing
 

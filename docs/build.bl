@@ -1,6 +1,7 @@
-build :: fn () #build_entry {
+main :: fn () s32 {
 	target :: add_executable("docs");
 	set_module_dir(target, "modules");
 	add_unit(target, "docs.bl");
 	compile(target);
+	return 0;
 }

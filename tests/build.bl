@@ -1,0 +1,9 @@
+#import "std/print"
+
+main :: fn () s32 {
+	target :: add_executable("test");
+	add_unit(target, "test.bl");
+	compile(target) catch return $.code;
+	return 0;
+}
+

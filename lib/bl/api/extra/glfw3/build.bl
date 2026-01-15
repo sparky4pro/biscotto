@@ -1,6 +1,6 @@
 #load "../build-lib-common.bl"
 
-build :: fn () #build_entry {
+main :: fn () s32 {
 	tmpdir :: get_temporary();
 	unzip("glfw-3.4.zip");
 
@@ -103,4 +103,5 @@ build :: fn () #build_entry {
 
 	set_cwd(rootdir);
 	os_execute("rm -rf glfw-3.4");
+	return 0;
 }

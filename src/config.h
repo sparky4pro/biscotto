@@ -32,6 +32,8 @@
 #define STR_HELPER(x) #x
 #define STR(x)        STR_HELPER(x)
 
+#define bl_version_hash(major, minor, patch) (((major) & 0xFF) << 16 | ((minor) & 0xFF) << 8 | ((patch) & 0xFF) << 0)
+
 #define BL_VERSION STR(BL_VERSION_MAJOR) "." STR(BL_VERSION_MINOR) "." STR(BL_VERSION_PATCH)
 
 #define BL_CONFIG_FILE "etc/bl.yaml"
