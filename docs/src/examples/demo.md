@@ -1,6 +1,6 @@
 # Quick Start
 
-The following example code shows different language features. We're not going into details here, but you can quickly see the language feature set in general. Please read the [manual](manual.html) if you're interested in more information.
+The following example code demonstrates various language features. We do not go into detail here, but it provides a quick overview of the language feature set. For more information, please refer to the [manual](manual.html).
 
 - Download: [demo.bl](demo.bl)
 - Execute:
