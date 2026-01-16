@@ -272,3 +272,30 @@ th {
 #bl-search:focus {
     border: 1px solid #F8E43C;
 }
+
+pre {
+	position: relative;
+}
+
+.copy-button {
+	position: absolute;
+	top: 8px;
+	right: 16px;
+	padding: 4px 8px;
+	font-size: 12px;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+	background: #132738;
+	color: #bbb;
+	opacity: 0.8;
+}
+
+.copy-button:hover {
+	opacity: 1.0;
+}
+
+.copy-button.copied {
+	color: white;
+	background: #3c8c3c;
+}

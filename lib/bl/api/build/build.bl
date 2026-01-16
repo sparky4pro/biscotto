@@ -2,77 +2,77 @@
 //!
 //! `#load "build/build.bl"`
 //!
-//! Compiler integrated build pipeline. Build pipline can be used to manage whole project compilation
-//! process directly in BL. All you need is to create the build file called `build.bl` and specify the
-//! `build_entry` function inside. When `-b` flag is used without need of specifying any files, the
-//! compiler will lookup `build.bl` file in the current directory and execute it in compile time. All
-//! compilation steps, target input and output can be specified here.
+//! Compiler-integrated build pipeline. The build pipeline can be used to manage the entire project
+//! compilation process directly in BL. All you need is to create a build file called `build.bl`.
 //!
-//! Example of minimal build.bl:
+//! Example of a minimal build.bl:
 //! ```bl
-//! build :: fn () #build_entry {
-//!     // create new executable target
+//! main :: fn () s32 {
+//!     // create a new executable target
 //!     exe :: add_executable("MyProgram");
 //!
 //!     // add 'main.bl' file into the target 'exe'
 //!     add_unit(exe, "main.bl");
 //!
-//!     // Start compilation
+//!     // start compilation
 //!     compile(exe);
+//!     return 0;
 //! }
 //! ```
 //!
-//! Start build pipeline using our build.bl file:
+//! Start the build pipeline using your build.bl file:
 //! ```
 //! $ blc -build
 //! ```
 //!
-//! Compiler will automatically use build.bl file as build script and execute build function in compile time.
-//! SDK file build/build.bl containing compiler API for build pipeline manipulation is loaded implicitly.
+//! The compiler will automatically use the build.bl file as a build script and execute the `main`
+//! function at compile-time. The `build/build.bl` file containing the compiler API for build pipeline
+//! manipulation is loaded implicitly.
 //!
-//! **warning**: Build API is available only in compile-time.
+//! **Warning**: The Build API is available only at compile-time.
 //!
 //! ## Basics
 //!
-//! ### Create new executable target
+//! ### Create a new executable target
 //!
-//! Target is a single build target defined as consisting of build Units representing source files
-//! needed for compilation. It`s basically a target compiled into an executable or binary file. Use
-//! [add_executable](#add_executable) function to specify your target. There are several options
-//! related to target, described later  in this documentation.
+//! A target represents a single build target consisting of build Units, where each Unit represents
+//! one source file required for compilation. It is essentially a target compiled into an executable
+//! or binary file. Use the [add_executable](#add_executable) function to specify your target. Several
+//! options related to the target are described later in this documentation.
 //!
 //! ```bl
 //! exe :: add_executable("MyProgram");
 //! ```
 //!
-//! ### Add file into target
+//! ### Add a file to a target
 //!
-//! Use [add_unit](#add_unit) function to add source files into the target. There is no need to add
-//! all files you want to use, general `load` and `import` will do so automatically. Only `main` or
-//! entry files must be included.
+//! Use the [add_unit](#add_unit) function to add source files to the target. There is no need to add
+//! all files you want to use; the general `load` and `import` mechanisms will handle that automatically.
+//! Only `main` or entry-point files must be included explicitly.
 //!
 //! ```bl
 //! add_unit(exe, "main.bl");
 //! ```
 //!
-//! ### Specify output directory
+//! ### Specify the output directory
 //!
-//! Output directory is a directory where all compiler-produced files will be written (i.e. native
-//! executables). Use [set_output_dir](#set_output_dir) function to specify this directory, current
-//! directory is used by default.
+//! The output directory is the directory where all compiler-produced files will be written
+//! (for example, native executables). Use the [set_output_dir](#set_output_dir) function to specify
+//! this directory. By default, the current directory is used.
 //!
 //! ```bl
 //! set_output_dir(exe, "bin");
 //! ```
 //!
-//! ### Compile target
+//! ### Compile the target
 //! ```bl
 //! compile(exe);
 //! ```
 //!
-//! ### Command line argumets
-//! All argumets passed after ``-build`` compiler flag are automatically forwarded into
-//! `command_line_arguments` global variable.
+//! ### Command-line arguments
+//! All arguments passed after the `-build` compiler flag are automatically forwarded to the
+//! `command_line_arguments` global variable. This allows customization of the build command by
+//! adding project-specific build flags. See the [`extra/argparse`](modules_argparse.html) module.
 //!
 
 /// Global builder options.
@@ -95,9 +95,9 @@ BuilderOptions :: struct {
 	stats: bool;
 	/// Toggle experimantal targets. (Off by default.)
 	enable_experimental_targets: bool;
-	/// Release memory after compilation. When compiler is executed as a single-shot application (start -> compile -> end)
-	/// all the time, we can leave releasing of allocated memory to the operating system to get some compilation speed boost.
-	/// (Off by default.)
+	/// Release memory after compilation. When the compiler is executed as a single-shot application
+	/// (start -> compile -> exit), memory cleanup can be left to the operating system to improve
+	/// compilation speed. (Off by default.)
 	do_cleanup_when_done: bool;
 	/// Maximum count of error reported by the compiler.
 	error_limit: s32;
@@ -123,17 +123,17 @@ set_builder_options :: fn (opt: BuilderOptions) {
 /// Target is representation of whole program workspace, it's a consist of Units, every unit
 /// represents one source file.
 Target :: struct { // !!! ABI sync TargetOptions !!!
-	/// See :ref:`TargetKind`.
+	/// See [TargetKind](#TargetKind).
 	kind: TargetKind;
-	/// Specify build mode of the target. See [BuildMode](#buildmode)
+	/// Specify build mode of the target. See [BuildMode](#BuildMode)
 	build_mode: BuildMode;
-	/// Specify debug information format used for target in debug mode. See [DebugInfo](#debuginfo).
+	/// Specify debug information format used for target in debug mode. See [DebugInfo](#DebugInfo).
 	debug_info_kind: DebugInfo;
 	/// Enable split of function arguments and return value into registers.
 	register_split: bool;
 	/// Verify LLVM module.
 	verify_llvm: bool;
-	/// Execute compile time tests.
+	/// Execute compile-time tests.
 	run_tests: bool;
 	/// Reduce compile-time tests output (remove results section).
 	tests_minimal_output: bool;
@@ -141,11 +141,11 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 	no_api: bool;
 	/// Copy all known dependencies into output folder.
 	copy_dependencies: bool;
-	/// Execute main function in compile time.
+	/// Execute main function in compile-time.
 	run: bool;
-	/// Print out lexer output.
+	/// Print lexer output.
 	print_tokens: bool;
-	/// Print out AST.
+	/// Print AST.
 	print_ast: bool;
 	/// Print assembly scope structure in dot Graphviz format.
 	print_scopes: bool;
@@ -156,21 +156,21 @@ Target :: struct { // !!! ABI sync TargetOptions !!!
 	emit_asm: bool;
 	/// Emit MIR code into file.
 	emit_mir: bool;
-	/// Disable generation of native binary.
+	/// Disable generation of a native binary.
 	no_bin: bool;
 	/// Disable LLVM backend.
 	no_llvm: bool;
 	/// Disable analyze pass of code generation.
 	no_analyze: bool;
-	/// Experimental x64 backend for debug only.
+	/// Experimental x64 backend (debug only).
 	x64: bool;
-	/// See :ref:`AssertMode`.
+	/// See [AssertMode](#AssertMode).
 	assert_mode: AssertMode;
-	/// Check only code syntax.
+	/// Check syntax only.
 	syntax_only: bool;
 	/// Enable virtual machine debugger.
 	vmdbg_enabled: bool;
-	/// Specify MIR instruction ID to break on if virtual machine debugger is attached.
+	/// Specify the MIR instruction ID to break on when the virtual machine debugger is attached.
 	vmdbg_break_on: s32;
 	/// Enable experimental build targets.
 	enable_experimental_targets: bool;
@@ -223,23 +223,23 @@ TargetTriple :: struct {
 	env: TargetEnvironment;
 }
 
-/// Specify target build mode. Every [Target](#target) can be compiled with various configuration
-/// options. The `BuildMode` can specify which set of options compiler should use.
+/// Specify the target build mode. Each [Target](#Target) can be compiled with various configuration
+/// options. The `BuildMode` determines which set of compiler options is used.
 BuildMode :: enum s32 {
-	/// Generates debug symbols and produce binary without any optimizations. `IS_DEBUG` global variable is
-	/// set to `true` in this mode. (`false` in all other modes)
+	/// Generates debug symbols and produces a binary without optimizations. The `IS_DEBUG` global
+	/// variable is set to `true` in this mode (`false` in all other modes).
 	DEBUG = 0;
-	/// Fast release mode; no debug symbols are produced, all possible optimizations
-	/// are applied to produce binary as fast as possible.
-	/// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+	/// Fast release mode. No debug symbols are produced, and all possible optimizations are applied
+	/// to generate the fastest possible binary.
+	/// Assertions are disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
 	RELEASE_FAST = 1;
-	/// Small release mode; no debug symbols are produced, optimizations are applied
-	/// to produce binary reasonably fast and as small as possible.
-	/// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+	/// Small release mode. No debug symbols are produced, and optimizations are applied to generate
+	/// a reasonably fast and as small as possible binary.
+	/// Assertions are disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
 	RELEASE_SMALL = 2;
-	/// Small release mode; with debug symbols produced, optimizations are applied
-	/// to produce binary reasonably fast and as small as possible.
-	/// The `assert` is disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
+	/// Release mode with debug symbols. Optimizations are applied to generate a reasonably fast and
+	/// as small as possible binary.
+	/// Assertions are disabled unless `Target.assert_mode` is `ALWAYS_ENABLED`.
 	RELEASE_WITH_DEBUG_INFO = 3;
 }
 
@@ -249,24 +249,24 @@ DebugInfo :: enum s32 {
 	CODE_VIEW = 1;
 }
 
-/// Specification of `assert` mode used for `Target`.
+/// Specification of the `assert` mode used for a `Target`.
 AssertMode :: enum s32 {
-	/// By default compiler emits  all assertions in [BuildMode](#buildmode). Debug and skips all
-	/// assertions in all optimized release modes.
+	/// The compiler emits assertions in [BuildMode](#BuildMode).DEBUG and skips assertions in all
+	/// optimized release modes.
 	DEFAULT = 0;
-	/// Force-enable assertion in all build modes.
+	/// Force-enable assertions in all build modes.
 	ALWAYS_ENABLED = 1;
-	/// Force-disable assertion in all build modes.
+	/// Force-disable assertions in all build modes.
 	ALWAYS_DISABLED = 2;
 }
 
-/// Add new executable target into the current compilation queue. Target with specified name is
-/// compiled into binary or it can be just executed in compile-time without any output created.
-/// Assemblies are compiled after `build_entry` function execution in order they are added.
+/// Add a new executable target to the current compilation queue. The newly created target
+/// can be compiled explicitly using [compile](#compile), or [compile_all](#compile_all) can be used
+/// to compile all added targets at once.
 ///
 /// ### Example
 /// ```bl
-/// build :: fn () #build_entry {
+/// main :: fn () s32 {
 ///     exe :: add_executable("MyProgram");
 ///     add_unit(exe, "src/main.bl");
 ///
@@ -282,6 +282,7 @@ AssertMode :: enum s32 {
 ///         }
 ///     }
 ///     compile(exe);
+///     return 0;
 /// }
 /// ```
 add_executable :: fn (name: string_view) *Target {
@@ -289,13 +290,13 @@ add_executable :: fn (name: string_view) *Target {
 	return __add_target(strtoc(name), cast(s32) TargetKind.EXECUTABLE);
 }
 
-/// Add new shared library target target into the current compilation queue.
+/// Add a new shared library target to the current compilation queue.
 add_library :: fn (name: string_view) *Target {
 	if name.len == 0 { panic("Invalid library name!"); }
 	return __add_target(strtoc(name), cast(s32) TargetKind.SHARED_LIBRARY);
 }
 
-/// Add new source file into the `target`. Function does nothing when `filepath` is already present
+/// Add a new source file to the `target`. The function does nothing if `filepath` is already present
 /// in the `target` assembly.
 add_unit :: fn (target: *Target, filepath: string_view) {
 	if !target { panic("Invalid target!"); }
@@ -303,7 +304,7 @@ add_unit :: fn (target: *Target, filepath: string_view) {
 	__add_unit(target, strtoc(filepath));
 }
 
-/// Start compilation of the `target` assembly and return `ok` or `error` in case compilation failed.
+/// Start compilation of the `target` assembly and return `ok` or `error` if compilation fails.
 compile :: fn (target: *Target) Error {
 	if !target { panic("Invalid target!"); }
 	state :: __compile(target);
@@ -311,15 +312,15 @@ compile :: fn (target: *Target) Error {
 	return error("Compilation failed!", state);
 }
 
-/// Compile all created targets one by one in order they were created. See also [compile](#compile).
-/// All targets are released after the compilation is done.
+/// Compile all created targets one by one in the order in which they were created.
+/// See also [compile](#compile).
 compile_all :: fn () Error {
 	state :: __compile_all();
 	if state == 0 { return OK; }
 	return error("Compilation failed!", state);
 }
 
-/// Add path for linker library lookup.
+/// Add a path for linker library lookup.
 add_lib_path :: fn (target: *Target, path: string_view) {
 	if !target { panic("Invalid target!"); }
 	if path.len == 0 { panic("Invalid library path!"); }
@@ -327,7 +328,7 @@ add_lib_path :: fn (target: *Target, path: string_view) {
 	__add_lib_path(target, strtoc(path));
 }
 
-/// Add new bool immutable variable into global scope of target assembly.
+/// Add a new immutable boolean variable to the global scope of the target assembly.
 add_bool_constant :: fn (target: *Target, name: string_view, value: bool, loc := #call_location) {
 	if !target then panic("Invalid target!");
 	if name.len == 0 then panic("Invalid constant name!");
@@ -335,22 +336,23 @@ add_bool_constant :: fn (target: *Target, name: string_view, value: bool, loc :=
 	__add_bool_user_define(target, auto name.ptr, auto name.len, value, auto loc._internal);
 }
 
-/// Link dynamic library. Only name is required (without extension and prefix). Compiler will lookup
-/// for this library in working directory, system `PATH` and `LINKER_LIB_PATH` variable specified
-/// in `bl.conf` file. You might add custom search locations using `add_lib_path` function.
+/// Link a dynamic library. Only the name is required (without extension or prefix). The compiler
+/// will look for this library in the working directory, the system `PATH`, and the `linker_lib_path`
+/// variable specified in the `bl.conf` file (use `blc --where-is-config` to get the file location).
+/// You can add custom search locations using the `add_lib_path` function.
 ///
-/// Linked library can be used also during compile-time execution, in such case all needed symbols are
-/// loaded in compile-time using dlopen.
+/// The linked library can also be used during compile-time execution. In that case, all required
+/// symbols are loaded at compile time using `dlopen`.
 ///
-/// Library name platform specific rules:
+/// Platform-specific library naming rules:
 ///
-/// * On Linux name will be extended by 'lib' prefix and '.so' extension.
-/// * On MacOS name will be extended by 'lib' prefix and '.dylib' extension.
-/// * On Windows name will be extended only by '.dll' extension.
+/// * On Linux, the name is extended with the `lib` prefix and the `.so` extension.
+/// * On macOS, the name is extended with the `lib` prefix and the `.dylib` extension.
+/// * On Windows, the name is extended only with the `.dll` extension.
 ///
 /// ### Example
 /// ```bl
-/// build :: fn () #build_entry {
+/// main :: fn () s32 {
 ///     exe :: add_executable("MyGame");
 ///     add_unit(exe, "src/main.bl");
 ///
@@ -359,6 +361,7 @@ add_bool_constant :: fn (target: *Target, name: string_view, value: bool, loc :=
 ///         default          { panic("Unknown build target!"); }
 ///     }
 ///     compile(exe);
+///     return 0;
 /// }
 ///
 /// target_windows :: fn (exe: *Target) {
@@ -374,17 +377,18 @@ link_library :: fn (target: *Target, name: string_view) {
 	__link_library(target, strtoc(name));
 }
 
-/// Link static library. Only name is required (without extension and prefix). Compiler will lookup
-/// for this library in working directory, system `PATH` and `LINKER_LIB_PATH` variable specified
-/// in `bl.conf` file. You might add custom search locations using `add_lib_path` function.
+/// Link a static library. Only the name is required (without extension or prefix). The compiler
+/// will look for this library in the working directory, the system `PATH`, and the `linker_lib_path`
+/// variable specified in the `bl.conf` file (use `blc --where-is-config` to get the file location).
+/// You can add custom search locations using the `add_lib_path` function.
 ///
-/// Linked library **cannot** be used during compile-time execution, because compiler cannot load
-/// static libraries in runtime.
+/// The linked library **cannot** be used during compile-time execution, because the compiler cannot
+/// load static libraries at runtime.
 ///
-/// Library name platform specific rules:
+/// Platform-specific library naming rules:
 ///
-/// * On Linux and MacOS name will be extended by 'lib' prefix and '.a' extension.
-/// * On Windows name will be extended only by '.lib' extension.
+/// * On Linux and macOS, the name is extended with the `lib` prefix and the `.a` extension.
+/// * On Windows, the name is extended only with the `.lib` extension.
 link_static_library :: fn (target: *Target, name: string_view) {
 	if !target { panic("Invalid target!"); }
 	if name.len == 0 { panic("Invalid library name!"); }
@@ -403,35 +407,35 @@ link_static_library :: fn (target: *Target, name: string_view) {
 	}
 }
 
-/// Link framework on macOS.
+/// Link a framework on macOS.
 link_framework :: fn (target: *Target, name: string_view) {
 	if !target { panic("Invalid target!"); }
 	if name.len == 0 { panic("Invalid framework name!"); }
 	append_linker_options(target, tprint("-framework %", name));
 }
 
-/// Add framework search path on macOS.
+/// Add a framework search path on macOS.
 add_framework_path :: fn (target: *Target, path: string_view) {
 	if !target { panic("Invalid target!"); }
 	if path.len == 0 { panic("Invalid framework path!"); }
 	append_linker_options(target, tprint("-F\"%\"", path));
 }
 
-/// Appends raw string data directly to linker command. Passed option is added without any
-/// processing and compatibility validation.
+/// Append raw string directly to the linker command. The passed option is added without any
+/// processing or compatibility validation.
 append_linker_options :: fn (target: *Target, option: string_view) {
 	if !target { panic("Invalid target!"); }
 	if option.len == 0 { return; }
 	__append_linker_options(target, strtoc(option));
 }
 
-/// Set build output directory. This is directory where all output files will be written. For
-/// example different output directory can be set for any build mode.
+/// Set the build output directory. This is the directory where all output files will be written.
+/// For example, a different output directory can be set for each build mode.
 ///
-/// Directory path `dir`. This can contain non-existing directories separated by `/`, compiler will
-/// create all missing directories in passed path.
+/// The directory path `dir` may contain non-existing directories separated by `/`. The compiler
+/// will create all missing directories in the specified path.
 ///
-/// Specified directory will be used also for build temporary files.
+/// The specified directory is also used for build temporary files.
 set_output_dir :: fn (target: *Target, dir: string_view) {
 	if !target { panic("Invalid target!"); }
 	if dir.len < 1 then return;
@@ -446,16 +450,18 @@ get_output_dir :: fn (target: *Target) string_view {
 	return ctostr(cdir);
 }
 
-/// Sets module directory `dir` for `target`. If #import directive is used, compiler will search the
-/// `dir` first when searching modules. In case the module is not found, default compiler API location
-/// will be used.
+/// Set the module directory `dir` for the `target`. When the `#import` directive is used, the
+/// compiler searches this directory first when resolving modules. If the module is not found,
+/// the default compiler API location is used. The default location is specified as `lib_dir`
+/// in the `bl.conf` file (use `blc --where-is-config` to get the file location).
 set_module_dir :: fn (target: *Target, dir: string_view) {
 	if !target { panic("Invalid target!"); }
 	if dir.len < 1 then return;
 	__set_module_dir(target, strtoc(dir));
 }
 
-/// Get module directory specified by [set_module_dir](#set_module_dir).
+/// Get the output directory specified by [set_output_dir](#set_output_dir), or an empty string
+/// if no directory was set.
 get_module_dir :: fn (target: *Target) string_view {
 	if !target { panic("Invalid target!"); }
 	cdir :: __get_module_dir(target);
@@ -463,24 +469,24 @@ get_module_dir :: fn (target: *Target) string_view {
 	return ctostr(cdir);
 }
 
-/// Get default module directory shipped with compiler.
+/// Get the module directory specified by [set_module_dir](#set_module_dir) or empty string.
 get_default_module_dir :: fn () string_view {
 	cdir :: __get_default_module_dir();
 	if !cdir then return str_view_empty;
 	return ctostr(cdir);
 }
 
-/// Returns target triple of the current host machine.
+/// Return the target triple of the current host machine.
 get_default_triple :: fn () TargetTriple {
 	result: TargetTriple;
 	__get_default_triple(&result);
 	return result;
 }
 
-/// Converts target triple to string.
+/// Convert a target triple to a string.
 ///
 /// !!! note
-///     The result string is allocated using current temporary allocator.
+///     The returned string is allocated using the current temporary allocator.
 triple_to_string :: fn (triple: TargetTriple) string_view {
 	buf: [128]C.char #noinit;
 	len :: __triple_to_string(&triple, buf.ptr, auto buf.len);

@@ -486,6 +486,7 @@ generate_page :: fn (filepath: string_view, menu: string_view, content: string_v
 
 	write_string(&file,
 		"</body>\n"
+		"<script src=\"copy_code.js\"></script>\n"
 		"</html>\n"
 	);
 
