@@ -4,8 +4,8 @@ type_utils :: #import "std/type_utils";
 Color :: enum {
 	RED;    // default value 0
 	GREEN;  // default value 1
-	BLUE    // default value 2
-};
+	BLUE;   // default value 2
+}
 
 // Enum declaration (base type is u8)
 Day :: enum u8 {
@@ -15,8 +15,8 @@ Day :: enum u8 {
 	TUE;     // ...
 	WED;
 	THU;
-	FRI
-};
+	FRI;
+}
 
 EntityKind :: enum {
 	// All values explicitly defined.

@@ -37,6 +37,7 @@ master
 - Print VCToolsVersion used for compiler compilation.
 - Build pipeline now use regular main function as an entry point.
 - Fix volatile type propagation where explicit cast was required for non-s32 number literals in binop.
+- Fix crash on missing declaration value.
 
 [Modules]
 
