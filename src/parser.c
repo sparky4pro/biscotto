@@ -2268,16 +2268,14 @@ struct ast *parse_decl(struct context *ctx) {
 			return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
 		}
 
-		if (isnotflag(decl->data.decl.flags, FLAG_EXTERN)) {
-			if (!decl->data.decl_entity.value) {
-				report_error(EXPECTED_INITIALIZATION, tok_assign, CARET_AFTER, "Expected value, function or type.");
-				tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
-				decl_pop(ctx);
-				return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
-			}
+		if (!decl->data.decl_entity.value) {
+			report_error(EXPECTED_INITIALIZATION, tok_assign, CARET_AFTER, "Expected value, function or type.");
+			tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
+			decl_pop(ctx);
+			return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_begin, scope_get(ctx)));
 		}
 
-		// Propagate declaration name in case of type/function declaration.
+		// Propagate declaration name.
 		struct ast *value = decl->data.decl_entity.value;
 		if (value->kind == AST_EXPR_TYPE) {
 			struct ast *type = value->data.expr_type.type;
