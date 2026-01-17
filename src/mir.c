@@ -7417,7 +7417,10 @@ static inline bool is_type_valid_for_binop(const struct mir_type *type, const en
 struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop) {
 	zone();
 
-	if (mir_is_volatile_int_type(binop->lhs) && mir_is_volatile_int_type(binop->rhs)) {
+	const bool is_lhs_volatile_int = mir_is_volatile_int_type(binop->lhs);
+	const bool is_rhs_volatile_int = mir_is_volatile_int_type(binop->rhs);
+
+	if (is_lhs_volatile_int && is_rhs_volatile_int) {
 		mir_set_volatile_int_type(&binop->base, binop->lhs->value.type);
 		return_zone(SKIP);
 	}
@@ -7440,7 +7443,7 @@ struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *b
 		}
 
 		const bool lhs_is_null        = binop->lhs->value.type->kind == MIR_TYPE_NULL;
-		const bool can_propagate_RtoL = can_impl_cast(lhs_type, rhs_type) || mir_is_volatile_int_type(binop->lhs) || mir_is_inferred_type(lhs_type);
+		const bool can_propagate_RtoL = (can_impl_cast(lhs_type, rhs_type) && !is_rhs_volatile_int) || is_lhs_volatile_int || mir_is_inferred_type(lhs_type);
 
 		if (can_propagate_RtoL) {
 			// Propagate right hand side expression type to the left.

@@ -11,9 +11,68 @@ default_types :: fn () #test {
 	test_eq(typeinfo(-9223372036854775808), typeinfo(s64)); // min
 }
 
-binop_propagation :: fn () #test {
+binop_propagation_1 :: fn () #test {
 	v : u64 : 1 << (60+3);
 	test_eq(v, 0x8000000000000000);
+}
+
+binop_propagation_2 :: fn () #test {
+	{
+		v : s8 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : s16 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : s32 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : s64 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : u8 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : u16 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : u32 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
+	{
+		v : u64 = 0;
+		v += 1;
+		v = v + 1;
+		v = 1 + v;
+		test_eq(v, 3);
+	}
 }
 
 ptr_type :: fn () #test {
