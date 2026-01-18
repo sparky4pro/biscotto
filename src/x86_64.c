@@ -268,7 +268,7 @@ static inline u32 get_position(struct thread_context *tctx, s32 section_number) 
 	}
 }
 
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 static void check_dangling_registers(struct thread_context *tctx) {
 	// Check for dangling registers
 	for (s32 i = 0; i < REGISTER_COUNT; ++i) {
@@ -1271,7 +1271,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			bassert(block->base.value.is_comptime);
 		} else {
 			str_buf_t name = get_tmp_str();
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 			unique_name(ctx, &name, ".", block->name);
 #else
 			unique_name(ctx, &name, ".", cstr("B"));

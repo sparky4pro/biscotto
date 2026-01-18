@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 static inline void print_address(struct ast *node, FILE *stream) {
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 	if (node)
 		fprintf(stream, " %llu ", node->_serial);
 	else

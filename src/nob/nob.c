@@ -141,11 +141,12 @@ void blc(void) {
 		           "-DYAML_DECLARE_STATIC");
 		cmd_append(&cmd, "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT");
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-Od", "-Zi", "-DBL_DEBUG", "-FS");
+			cmd_append(&cmd, "-Od", "-Zi", "-FS");
 		} else {
-			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG", "-GL");
+			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG");
 		}
 		cmd_append(&cmd, temp_sprintf("-DBL_ASSERT_ENABLE=%d", ASSERT_ENABLE ? 1 : 0));
+		cmd_append(&cmd, temp_sprintf("-DBL_DEBUG_ENABLE=%d", IS_DEBUG ? 1 : 0));
 		if (BL_SIMD_ENABLE) cmd_append(&cmd, "-DBL_USE_SIMD", "-arch:AVX");
 		if (BL_RPMALLOC_ENABLE) cmd_append(&cmd, "-DBL_RPMALLOC_ENABLE=1");
 		cmd_append(&cmd, is_cxx ? "-std:c++17" : "-std:c11");
@@ -162,13 +163,14 @@ void blc(void) {
 		nob_read_entire_dir(BUILD_DIR, &files);
 
 		cmd_append(&cmd, "cl", "-nologo");
-		cmd_append(&cmd, "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT", "-FS");
+		cmd_append(&cmd, "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT");
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-Od", "-Zi", "-DBL_DEBUG");
+			cmd_append(&cmd, "-Od", "-Zi", "-FS");
 		} else {
-			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG", "-GL");
+			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG");
 		}
 		cmd_append(&cmd, temp_sprintf("-DBL_ASSERT_ENABLE=%d", ASSERT_ENABLE ? 1 : 0));
+		cmd_append(&cmd, temp_sprintf("-DBL_DEBUG_ENABLE=%d", IS_DEBUG ? 1 : 0));
 		for (int i = 0; i < files.count; ++i) {
 			if (ends_with(files.items[i], ".obj")) cmd_append(&cmd, temp_sprintf(BUILD_DIR "/%s", files.items[i]));
 		}
@@ -180,7 +182,7 @@ void blc(void) {
 				cmd_append(&cmd, temp_sprintf("%s/" SV_Fmt, LLVM_LIB_DIR, SV_Arg(lib)));
 		}
 
-		cmd_append(&cmd, "-link", "-LTCG", "-incremental:no", "-opt:ref", "-subsystem:console", "-NODEFAULTLIB:MSVCRTD.lib", "-OPT:NOREF");
+		cmd_append(&cmd, "-link", "-LTCG", "-incremental:no", "-opt:ref", "-subsystem:console", "-NODEFAULTLIB:MSVCRTD.lib");
 
 		cmd_append(&cmd,
 		           BUILD_DIR "/libyaml/libyaml.lib",
@@ -214,19 +216,20 @@ void blc(void) {
 #ifdef __APPLE__
 		cmd_append(&cmd, "-fcolor-diagnostics", "-arch", "arm64", "-isysroot", MACOS_SDK);
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-O0", "-g", "-DBL_DEBUG");
+			cmd_append(&cmd, "-O0", "-g");
 		} else {
 			cmd_append(&cmd, "-O3", "-DNDEBUG");
 		}
 #else
 		cmd_append(&cmd, "-fdiagnostics-color=always", "-D_GNU_SOURCE", "-Wall", "-Wno-address", "-Wno-unused-value", "-Wno-unused-function", "-Wno-multistatement-macros");
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-O0", "-ggdb", "-DBL_DEBUG");
+			cmd_append(&cmd, "-O0", "-ggdb");
 		} else {
 			cmd_append(&cmd, "-O3", "-DNDEBUG");
 		}
 #endif
 		cmd_append(&cmd, temp_sprintf("-DBL_ASSERT_ENABLE=%d", ASSERT_ENABLE ? 1 : 0));
+		cmd_append(&cmd, temp_sprintf("-DBL_DEBUG_ENABLE=%d", IS_DEBUG ? 1 : 0));
 		if (BL_SIMD_ENABLE) nob_log(NOB_WARNING, "BL_SIMD_ENABLE not supported on this platform.");
 		if (BL_RPMALLOC_ENABLE) cmd_append(&cmd, "-DBL_RPMALLOC_ENABLE=1");
 		cmd_append(&cmd, is_cxx ? "-std=c++17" : "-std=gnu11");

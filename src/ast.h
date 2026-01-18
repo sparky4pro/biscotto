@@ -384,7 +384,7 @@ struct ast {
 #undef GEN_AST_DATA
 	} data;
 
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 	u64 _serial;
 #endif
 };

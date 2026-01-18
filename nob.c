@@ -160,7 +160,8 @@ void parse_command_line_arguments(int argc, char *argv[]) {
 	while (argc > 0) {
 		char *arg = shift_args(&argc, &argv);
 		if (strcmp(arg, "debug") == 0) {
-			IS_DEBUG = true;
+			IS_DEBUG      = true;
+			ASSERT_ENABLE = true;
 			TARGET |= TARGET_BLC;
 		} else if (strcmp(arg, "release") == 0) {
 			IS_DEBUG      = false;

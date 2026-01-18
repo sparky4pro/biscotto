@@ -285,7 +285,7 @@ int main(s32 argc, char *argv[]) {
 	state = _state;  \
 	goto RELEASE;
 
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 	puts("Running in DEBUG mode");
 	printf("CPU count: %d\n", cpu_thread_count());
 #endif

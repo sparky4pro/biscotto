@@ -6,7 +6,7 @@
 #include "table.h"
 #include "llvm-c/Types.h"
 
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 #define NAMED_VARS true
 #else
 #define NAMED_VARS false

@@ -2,7 +2,7 @@
 
 #define STB_DS_IMPLEMENTATION
 
-#undef BL_DEBUG
+#undef BL_DEBUG_ENABLE
 #undef BL_ASSERT_ENABLE
 
 #include "x86_64_instructions.h"

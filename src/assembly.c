@@ -234,7 +234,7 @@ struct target *target_new(const char *name) {
 	target->opt       = ASSEMBLY_OPT_DEBUG;
 	target->kind      = ASSEMBLY_EXECUTABLE;
 	target->reg_split = true;
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 	target->verify_llvm = true;
 #endif
 

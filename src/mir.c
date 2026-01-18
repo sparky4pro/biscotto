@@ -1197,7 +1197,7 @@ static inline void *mutate_instr(struct mir_instr *instr, enum mir_instr_kind ki
 	bassert(instr);
 	bassert(instr->kind != kind && "Attempt to mutate instruction to the same kind.");
 
-#if defined(BL_DEBUG) || defined(BL_ASSERT_ENABLE)
+#if BL_ASSERT_ENABLE
 	bassert(instr->_orig_kind == MIR_INSTR_INVALID);
 	instr->_orig_kind = instr->kind;
 #endif
@@ -1212,7 +1212,7 @@ static struct mir_instr *duplicate_instr(struct context *ctx, struct mir_instr *
 	struct mir_instr *tmp = arena_alloc(&ctx->mir_arenas->instr);
 	memcpy(tmp, instr, SIZEOF_MIR_INSTR);
 	tmp->id = batomic_fetch_add_s64(&_instr_id_counter, 1);
-#if defined(BL_DEBUG) || defined(BL_ASSERT_ENABLE)
+#if BL_ASSERT_ENABLE
 	tmp->_orig_id = instr->id;
 #endif
 
@@ -6122,7 +6122,7 @@ struct result analyze_instr_arg(struct context UNUSED(*ctx), struct mir_instr_ar
 	assert(arg_data);
 	const bool is_comptime = isflag(arg_data->flags, FLAG_COMPTIME);
 
-#ifdef BL_DEBUG
+#if BL_ASSERT_ENABLE
 	if (is_comptime) bassert(arg_data->generation_call && "Compile time known arguments not provided for mixed function!");
 #endif
 
@@ -8363,7 +8363,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 			if (!recipe_fn_arg) break;
 
-#ifdef BL_DEBUG
+#if BL_ASSERT_ENABLE
 			// @Note: Default values was resolved in previous stage. However the argument on
 			// call-side still can be missing in case recipe_fn_arg is vargs, we should properly
 			// report such a situation.
@@ -9530,7 +9530,7 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr) {
 			}
 		} else if (state.state == ANALYZE_FAILED) {
 			(*analyze_state) = MIR_IS_FAILED;
-#ifdef BL_DEBUG
+#if BL_DEBUG_ENABLE
 			fprintf(stdout, "Last instruction being analyzed:\n");
 			mir_print_instr(stdout, ctx->assembly, instr);
 			fprintf(stdout, "\n\n");
@@ -12466,7 +12466,7 @@ static void _type2str(str_buf_t *buf, const struct mir_type *type, bool prefer_n
 	}
 }
 
-#ifdef BL_DEBUG
+#if BL_ASSERT_ENABLE
 vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value) {
 	bassert(value && "Attempt to read null value!");
 	bassert(value->is_comptime && "Attempt to read non-comptime value!");

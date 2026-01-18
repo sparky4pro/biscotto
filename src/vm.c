@@ -1850,7 +1850,7 @@ void interp_instr_ret(struct virtual_machine *vm, struct mir_instr_ret *ret) {
 		bassert(ret_type->kind != MIR_TYPE_VOID && "Void return cannot have specified value.");
 		ret_data_ptr = fetch_value(vm, &ret->value->value);
 		bassert(ret_data_ptr);
-#ifdef BL_DEBUG
+#if BL_ASSERT_ENABLE
 	} else {
 		bassert(ret_type->kind == MIR_TYPE_VOID);
 #endif
@@ -2042,7 +2042,7 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr) {
 void eval_instr_type_info(struct virtual_machine *vm, struct mir_instr_type_info *type_info) {
 	bassert(type_info->rtti_type && "Missing RTTI type!");
 	struct mir_var *rtti_var = mir_get_rtti(vm->assembly, type_info->rtti_type->id.hash);
-#if defined(BL_DEBUG)
+#if BL_DEBUG_ENABLE
 	if (!rtti_var) {
 		const str_t  name = type_info->rtti_type->id.str;
 		const hash_t hash = type_info->rtti_type->id.hash;

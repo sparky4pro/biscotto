@@ -16,7 +16,7 @@
 
 #define MIR_NO_REF_COUNTING (-1)
 
-#ifdef BL_DEBUG
+#if BL_ASSERT_ENABLE
 vm_stack_ptr_t _mir_cev_read(struct mir_const_expr_value *value);
 #else
 #define _mir_cev_read(expr) (expr)->data
@@ -540,7 +540,7 @@ struct mir_instr {
 	struct mir_instr *prev;
 	struct mir_instr *next;
 
-#if defined(BL_DEBUG) || defined(BL_ASSERT_ENABLE)
+#if BL_ASSERT_ENABLE
 	enum mir_instr_kind _orig_kind;
 	u64                 _orig_id;
 #endif

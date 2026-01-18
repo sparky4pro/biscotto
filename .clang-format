@@ -21,3 +21,4 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AlwaysBreakAfterReturnType: None
 IndentPPDirectives: None
 SortIncludes: false
+AlignEscapedNewlines: DontAlign
