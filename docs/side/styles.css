@@ -288,11 +288,12 @@ pre {
 	cursor: pointer;
 	background: #132738;
 	color: #bbb;
-	opacity: 0.8;
+	opacity: 0.0;
+    transition: opacity 0.2s;
 }
 
-.copy-button:hover {
-	opacity: 1.0;
+pre:hover .copy-button {
+    opacity: 1.0;
 }
 
 .copy-button.copied {

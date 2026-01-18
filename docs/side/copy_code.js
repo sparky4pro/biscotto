@@ -20,5 +20,12 @@ document.querySelectorAll("pre > code").forEach(code_block => {
 		}
 	});
 
+	pre.addEventListener("mouseenter", () => {
+        // reset on hover
+        button.textContent = "Copy";
+        button.classList.remove("copied");
+        clearTimeout(timeoutId);
+    });
+	
 	pre.appendChild(button);
 });
