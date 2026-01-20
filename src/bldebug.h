@@ -62,6 +62,8 @@ void print_trace_impl(void);
 	} \
 	(void)0
 
+#define bis_test_bl(location) ((location) && str_match((location)->unit->filename, cstr("test.bl")))
+
 #else // BL_DEBUG_ENABLE
 #define print_trace() (void)0
 #define BL_DEBUG_BREAK \
@@ -77,7 +79,9 @@ void print_trace_impl(void);
 	while (0) { \
 	} \
 	(void)0
-#endif
+
+#define bis_test_bl(location) (false)
+#endif // BL_DEBUG_ENABLE
 
 #if BL_ASSERT_ENABLE
 #define bassert(e) \
@@ -123,7 +127,7 @@ void print_trace_impl(void);
 #define bcalled_once_assert(obj, name) (void)0
 #define bcheck_main_thread()           (void)0
 #define bcheck_true(expr)              (expr)
-#endif
+#endif // BL_ASSERT_ENABLE
 
 #define babort(format, ...) \
 	{ \
