@@ -38,21 +38,21 @@ U64_MAX : u64 : 18446744073709551615;
 /// Returns NaN for given type `T`.
 nan :: fn (T: type #comptime) T #comptime {
 	static_assert(type_utils.is_real(T));
-#if T == f32 {
-	return 0.f/0.f;
-} else {
-	return 0./0.;
-}
+	#if T == f32 {
+		return 0.f/0.f;
+	} else {
+		return 0./0.;
+	}
 }
 
 /// Returns positive infinity value for given type `T`.
 inf :: fn (T: type #comptime) T #comptime {
 	static_assert(type_utils.is_real(T));
-#if T == f32 {
-	return 1.f/0.f;
-} else {
-	return 1./0.;
-}
+	#if T == f32 {
+		return 1.f/0.f;
+	} else {
+		return 1./0.;
+	}
 }
 
 /// Returns `true` in case the input real number is NaN (i.e. result of operation 0./0.).

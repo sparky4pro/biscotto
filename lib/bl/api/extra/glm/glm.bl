@@ -753,11 +753,11 @@ quat_nlerp :: fn (a: quat, b: quat, t: f32) quat {
 
 
 lerp :: fn (a: ?T, b: T, t: f32) T #inline {
-#if T == v2 || T == v3 || T == v4 {
-	return add(a, mul(sub(b, a), t));
-} else {
-	return math.lerp(a, b, t);
-}
+	#if T == v2 || T == v3 || T == v4 {
+		return add(a, mul(sub(b, a), t));
+	} else {
+		return math.lerp(a, b, t);
+	}
 }
 
 distance :: fn (a: ?T, b: T) f32 #inline {

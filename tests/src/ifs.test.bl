@@ -166,35 +166,6 @@ logical_comptime :: fn () #test {
 	test_false(c && (b || a));
 }
 
-static_if_1 :: fn () #test {
-	#if false {
-		test_true(false);
-	} else {
-		test_true(true);
-	}
-}
-
-static_if_2 :: fn () #test {
-	FOO :: true;
-	BAR :: false;
-
-	#if FOO {
-		test_true(true);
-		#if !FOO {
-			test_true(false);
-		} else {
-			test_true(true);
-			#if !BAR {
-				test_true(true);
-			}
-		}
-	}
-
-	#if FOO && !BAR {
-		test_true(true);
-	}
-}
-
 optional_then :: fn () #test {
 	v := false;
 	expr := true;

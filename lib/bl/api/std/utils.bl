@@ -40,7 +40,7 @@
 /// !!! note
 ///     Multiple flags can be set at once by using an or operator `other = A | B`.
 set_flag :: fn (flags: *?T, other: T) T #inline {
-#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
+	#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
 	assert(flags);
 	@flags |= other;
 	return @flags;
@@ -51,7 +51,7 @@ set_flag :: fn (flags: *?T, other: T) T #inline {
 /// !!! note
 ///     Multiple flags can be cleared at once by using an or operator `other = A | B`.
 clr_flag :: fn (flags: *?T, other: T) T #inline {
-#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
+	#if !is_valid_bitflags(T) { compiler_error("Flags is supposed to be integer or enum flags type."); }
 	assert(flags);
 	@flags &= ~other;
 	return @flags;

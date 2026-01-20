@@ -950,11 +950,11 @@ C :: #import "libc";
 
 // Just to be sure we have some ABI compatibility.
 validate :: fn () #maybe_unused {
-#if PLATFORM == Platform.WINDOWS {
-	static_assert(sizeof(ma_mutex) == sizeof(ma_handle));
-	static_assert(sizeof(ma_log) == 112);
-	static_assert(sizeof(ma_engine_config) == 128);
-}
+	#if PLATFORM == Platform.WINDOWS {
+		static_assert(sizeof(ma_mutex) == sizeof(ma_handle));
+		static_assert(sizeof(ma_log) == 112);
+		static_assert(sizeof(ma_engine_config) == 128);
+	}
 }
 
 // This is a bit tricky :/

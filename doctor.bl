@@ -386,7 +386,7 @@ get_full_path :: fn (relative: string_view) string_view #inline {
 }
 
 silent_output :: fn () string_view #comptime {
-	#if PLATFORM == Platform.WINDOWS {
+	#if PLATFORM == .WINDOWS {
 		return "2>nul 1>nul";
 	} else {
 		return "1>/dev/null 2>/dev/null";
@@ -394,7 +394,7 @@ silent_output :: fn () string_view #comptime {
 }
 
 get_compiler_path :: fn () string_view #inline {
-	#if PLATFORM == Platform.WINDOWS {
+	#if PLATFORM == .WINDOWS {
 		return get_full_path("bin/blc.exe");
 	} else {
 		return get_full_path("bin/blc");
@@ -402,7 +402,7 @@ get_compiler_path :: fn () string_view #inline {
 }
 
 get_exe_name :: fn () string_view #comptime {
-	#if PLATFORM == Platform.WINDOWS {
+	#if PLATFORM == .WINDOWS {
 		return "out.exe";
 	} else {
 		return "./out";

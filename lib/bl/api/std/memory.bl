@@ -503,30 +503,30 @@ default_allocator_handler :: fn (
 	switch operation {
 		ALLOCATE {
 			mem: *u8;
-#if PLATFORM == Platform.WINDOWS {
-			mem = C.aligned_malloc(size, alignment);
-} else {
-			mem = C.malloc(size);
-}
+			#if PLATFORM == .WINDOWS {
+				mem = C.aligned_malloc(size, alignment);
+			} else {
+				mem = C.malloc(size);
+			}
 			if !mem { return null, error("Bad allocation."); }
 			return mem, OK;
 		}
 		REALLOCATE {
 			mem: *u8;
-#if PLATFORM == Platform.WINDOWS {
-			mem = C.aligned_realloc(ptr, size, alignment);
-} else {
-			mem = C.realloc(ptr, size);
-}
+			#if PLATFORM == .WINDOWS {
+				mem = C.aligned_realloc(ptr, size, alignment);
+			} else {
+				mem = C.realloc(ptr, size);
+			}
 			if !mem { return null, error("Bad reallocation."); }
 			return mem, OK;
 		}
 		FREE {
-#if PLATFORM == Platform.WINDOWS {
-			C.aligned_free(ptr);
-} else {
-			C.free(ptr);
-}
+			#if PLATFORM == .WINDOWS {
+				C.aligned_free(ptr);
+			} else {
+				C.free(ptr);
+			}
 		}
 
 		RESET, RELEASE {

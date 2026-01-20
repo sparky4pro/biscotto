@@ -8,11 +8,11 @@ main :: fn () s32 {
 	test_eq(exe.kind, TargetKind.EXECUTABLE);
 	test_eq(exe.build_mode, BuildMode.DEBUG);
 	test_false(exe.run);
-#if PLATFORM == Platform.WINDOWS {
-	test_eq(exe.debug_info_kind, DebugInfo.CODE_VIEW);
-} else {
-	test_eq(exe.debug_info_kind, DebugInfo.DWARF);
-}
+	#if PLATFORM == .WINDOWS {
+		test_eq(exe.debug_info_kind, DebugInfo.CODE_VIEW);
+	} else {
+		test_eq(exe.debug_info_kind, DebugInfo.DWARF);
+	}
 
 	parent_dir: string_view;
 	str_split_by_last(get_output_dir(exe), '/', null, &parent_dir);

@@ -114,7 +114,7 @@ specialization :: fn () {
 		are_the_same := false;
 		// #if is evaluated in compile-time and only one of the branches is actually "inserted" into
 		// the code based on the condition.
-		// One important think here to know is that the condition value must be known in compile-time,
+		// One important thing here to know is that the condition value must be known at compile-time,
 		// in this case the compiler knows that 'T' has been already replaced and does not change in
 		// the function-type specialization.
 		#if T == string_view {

@@ -1,5 +1,5 @@
 main :: fn () s32 {
-	#if PLATFORM != Platform.WINDOWS {
+	#if PLATFORM != .WINDOWS {
 		panic("This example is awailable only on Windows, sorry.");
 	}
 	exe := add_executable("window");

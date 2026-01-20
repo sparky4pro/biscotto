@@ -212,7 +212,7 @@ main :: fn () s32 {
 	print_info("Running in: '%'", root_dir);
 
 	blc := "blc";
-	#if PLATFORM == Platform.WINDOWS {
+	#if PLATFORM == .WINDOWS {
 		blc = "blc.exe";
 	}
 
