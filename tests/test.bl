@@ -1,14 +1,9 @@
 #import "std/print"
 
-foo :: fn () #test {
-}
-
-bar :: fn () #test {
-}
-
 main :: fn () s32 {
 	print("----------------------------------------\n");
 	print("DONE!\n");
 	print("----------------------------------------\n");
+	c::;
 	return 0;
 }

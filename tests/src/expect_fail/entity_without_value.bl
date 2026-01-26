@@ -1,0 +1,5 @@
+// @ERR_EXPECTED_INITIALIZATION@
+main :: fn () s32 {
+	v ::;
+	return 0;
+}
