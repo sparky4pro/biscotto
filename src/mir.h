@@ -57,6 +57,24 @@ struct mir_arenas {
 	struct arena arg;
 	struct arena fn_group;
 	struct arena fn_generated;
+	struct arena codegen;
+};
+
+struct mir_codegen {
+	struct mir_instr_block *current_block;
+	struct mir_instr       *current_fwd_struct_decl;
+	struct mir_instr_call  *current_catched_call;
+	struct mir_instr_block *cursor_block;
+
+	struct mir_instr_block *break_block;
+	struct mir_instr_block *continue_block;
+
+	// True in case the current generation is done in context of function recipe generation.
+	// This may affect compile-time argument types.
+	bool is_inside_recipe;
+	bool is_inside_fn_declaration;
+
+	hash_t current_scope_layer;
 };
 
 typedef sarr_t(struct mir_instr *, 32) instrs_t;
@@ -87,14 +105,18 @@ struct waiting_entry {
 	instrs_t value;
 };
 
+struct block_entry {
+	struct mir_instr_block *hash;
+	struct mir_instr_block *value;
+};
+
 struct mir_analyze {
 	// Instructions waiting for analyze.
 	array(struct mir_instr *) stack[2];
 	s32   si; // Current stack index
 	mtx_t stack_lock;
 
-	// Hash table of arrays. Hash is id of symbol and array contains queue of waiting
-	// instructions.
+	// Hash table of arrays. Hash is id of symbol and array contains queue of waiting instructions.
 	hash_table(struct waiting_entry) waiting;
 
 	// Structure members can sometimes point to self, in such case we end up with
@@ -234,6 +256,8 @@ enum mir_fn_generated_flavor_flags {
 	MIR_FN_GENERATED_MIXED = 1 << 2,
 };
 
+typedef sarr_t(struct ast *, 8) defer_stack_t;
+
 // FN
 // @Performance: Make smaller version of the function for function recipes.
 struct mir_fn {
@@ -284,8 +308,8 @@ struct mir_fn {
 	enum ast_flags       flags;
 	enum builtin_id_kind builtin_id;
 	// pointer to the first block inside function body
-	struct mir_instr_block *first_block;
-	struct mir_instr_block *last_block;
+	struct mir_instr_block *entry_block;
+	struct mir_instr_block *insertion_cursor_block;
 	struct mir_instr_block *exit_block;
 	// Temporary variable used for return value.
 	struct mir_instr *ret_tmp;
@@ -299,6 +323,9 @@ struct mir_fn {
 		struct dyncall_cb_context context;
 	} dyncall;              // dyncall external context
 	str_t obsolete_message; // Optional, check len!
+
+	hash_table(struct block_entry) phi_block_mapping;
+	defer_stack_t defer_stack;
 
 	bmagic_member
 };
@@ -861,8 +888,6 @@ struct mir_instr_cond_br {
 	// generated to be used as pre-instruction to PHI, we must keep condition value on stack (if
 	// it's not compile time known) in order to be used as resolution of PHI expression.
 	bool keep_stack_value;
-	// Conditional break generated from static if.
-	bool is_static;
 	// Set in case this instruction is used implicitly in catch for error handling.
 	bool is_catch;
 };
@@ -870,6 +895,17 @@ struct mir_instr_cond_br {
 struct mir_instr_br {
 	struct mir_instr        base;
 	struct mir_instr_block *then_block;
+};
+
+struct mir_instr_defer {
+	struct mir_instr base;
+	struct ast      *code;
+};
+
+struct mir_instr_defer_insert {
+	struct mir_instr    base;
+	bool                whole_tree;
+	struct mir_codegen *codegen;
 };
 
 struct mir_instr_compound {
@@ -943,6 +979,15 @@ struct mir_instr_designator {
 	struct mir_instr  base;
 	struct ast       *ident;
 	struct mir_instr *value;
+};
+
+struct mir_instr_cond_insert {
+	struct mir_instr  base;
+	struct mir_instr *cond;
+	struct ast       *then_block;
+	struct ast       *else_block;
+
+	struct mir_codegen *codegen;
 };
 
 struct mir_instr_phi {

@@ -1600,6 +1600,7 @@ measure_runtime_in_debug_only_end :: fn () #enable_if IS_DEBUG {
 - The function and all its calls are fully analyzed even if the function is disabled.
 - The conditional function might return values, but in case the function is disabled the returned value on the call side is implicitly changed to `void` type. Such behavior is intentionally chosen to prevent possible issues with uninitialized variables.
 
+See also [static if](manual.html#Static-If).
 
 # Comments
 
@@ -1880,9 +1881,29 @@ main :: fn () s32 {
 }
 ```
 
+## Static If
+
+Static `#if` can be used to include or exclude parts of the code based on its condition. There are a few important points to keep in mind:
+
+- The condition must be evaluable at compile time.
+- Static `#if` does not introduce a new scope. This is important because it affects the behavior of the [defer](manual.html#Defer) statement when used inside its body.
+- Excluded code is not type-checked, so the inactive branch may contain references to non-existent symbols.
+
+```bl
+@@@examples/static_if.bl
+```
+
+!!! note
+    Static `#if` is currently allowed only in local scopes and cannot be used in structs or enums.
+
+!!! note
+    Ternary static `#if` is not implemented yet.
+
+See also [enable_if](manual.html#enable_if), which might be used to conditionally include function calls.
+
 ## Switch
 
-A *switch* can compare one numeric value against multiple values and switch execution flow to matching case. The `default` case can be used for all other values we don't explicitly handle. While the expression after *switch* keyword is supposed to be a runtime value, the *case* values must be known in compile-time. Currently, the *switch* can be used only with *integer* types.
+A *switch* can compare one numeric value against multiple values and switch execution flow to matching case. The `default` case can be used for all other values we don't explicitly handle. While the expression after *switch* keyword is supposed to be a runtime value, the *case* values must be known at compile-time. Currently, the *switch* can be used only with *integer* types.
 
 ```bl
 #import "std/print"
@@ -2574,7 +2595,7 @@ Report warning in compile-time.
 - `#extern` - See [here](manual.html#extern).
 - `#file` - Evaluates in `string_view` containing name of current file.
 - `#flags` - See [here](manual.html#Enum-Flags-Type).
-- `#if` - Mark if statement as static if evaluated in compile time.
+- `#if` - See [here](manual.html#Static-If).
 - `#import` - See [here](manual.html#Import).
 - `#inline` - Mark function as inline.
 - `#intrinsic` - Compiler internal.

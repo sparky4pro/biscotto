@@ -52,7 +52,7 @@ struct scope_entry {
 	struct scope          *parent_scope;
 	struct ast            *node;
 	bool                   is_builtin;
-	union scope_entry_data data;
+	union scope_entry_data as;
 	s32                    ref_count;
 	bmagic_member
 };
@@ -102,11 +102,16 @@ struct scope *scope_create(struct scope_thread_local *local,
                            struct scope              *parent,
                            struct location           *loc);
 
-struct scope_entry *scope_create_entry(struct scope_thread_local *local,
-                                       enum scope_entry_kind      kind,
-                                       struct id                 *id,
-                                       struct ast                *node,
-                                       bool                       is_builtin);
+typedef struct
+{
+	enum scope_entry_kind kind;
+	struct id            *id;
+	struct ast           *node;
+	bool                  is_builtin;
+} scope_create_entry_args_t;
+
+struct scope_entry *_scope_create_entry(struct scope_thread_local *local, scope_create_entry_args_t *args);
+#define scope_create_entry(ctx, ...) _scope_create_entry((ctx), &(scope_create_entry_args_t){__VA_ARGS__})
 
 void scope_reserve(struct scope *scope, s32 num);
 void scope_insert(struct scope *scope, hash_t layer, struct scope_entry *entry);

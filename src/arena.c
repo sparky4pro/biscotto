@@ -59,9 +59,16 @@ void arena_init(struct arena     *arena,
 	// arena->first_chunk   = arena->current_chunk;
 	arena->first_chunk   = NULL;
 	arena->current_chunk = NULL;
+
+	bassert(!arena->is_initialized);
+#if BL_ASSERT_ENABLE
+	arena->is_initialized = true;
+#endif
 }
 
 void arena_terminate(struct arena *arena) {
+	bassert(arena->is_initialized);
+	
 	struct arena_chunk *chunk = arena->first_chunk;
 	while (chunk) {
 		chunk = free_chunk(arena, chunk);
@@ -69,6 +76,8 @@ void arena_terminate(struct arena *arena) {
 }
 
 void *arena_alloc(struct arena *arena) {
+	bassert(arena->is_initialized);
+	
 	zone();
 	bassert(arena->owner_thread_index == get_worker_index() && "Arena is supposed to be used from its initialization thread!");
 	if (!arena->current_chunk) {
@@ -93,6 +102,8 @@ void *arena_alloc(struct arena *arena) {
 }
 
 void arena_get_flatten(struct arena *arena, array(void *) * buf) {
+	bassert(arena->is_initialized);
+	
 	struct arena_chunk *chunk = arena->first_chunk;
 	while (chunk) {
 		arrsetcap(*buf, arrlen(*buf) + chunk->count);

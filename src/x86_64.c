@@ -1229,7 +1229,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		}
 
 		// Generate all blocks in the function body.
-		arrput(tctx->emit_block_queue, fn->first_block);
+		arrput(tctx->emit_block_queue, fn->entry_block);
 		while (arrlenu(tctx->emit_block_queue)) {
 			struct mir_instr_block *block = arrpop(tctx->emit_block_queue);
 			bassert(block->terminal);
@@ -1280,7 +1280,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			block->base.backend_value = add_block(tctx, str_buf_view(name));
 			put_tmp_str(name);
 
-			if (fn->first_block == block) {
+			if (fn->entry_block == block) {
 				allocate_stack_variables(tctx, fn);
 			}
 		}
@@ -1394,7 +1394,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			BL_UNIMPLEMENTED;
 		}
 
-		struct mir_member *member = mem->scope_entry->data.member;
+		struct mir_member *member = mem->scope_entry->as.member;
 		bassert(member);
 
 		if (member->is_parent_union) {
@@ -2268,7 +2268,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 		bassert(entry);
 		switch (entry->kind) {
 		case SCOPE_ENTRY_VAR: {
-			struct mir_var *var = entry->data.var;
+			struct mir_var *var = entry->as.var;
 			if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
 				const hash_t hash = submit_global_variable_generation(ctx, tctx, var);
 				set_value(tctx, instr, (struct x64_value){.kind = RELOCATION, .reloc.hash = hash});
@@ -2279,7 +2279,7 @@ static void emit_instr(struct context *ctx, struct thread_context *tctx, struct 
 			break;
 		}
 		case SCOPE_ENTRY_FN: {
-			struct mir_fn *fn   = entry->data.fn;
+			struct mir_fn *fn   = entry->as.fn;
 			const hash_t   hash = submit_function_generation(ctx, fn);
 			set_value(tctx, instr, (struct x64_value){.kind = RELOCATION, .reloc.hash = hash});
 

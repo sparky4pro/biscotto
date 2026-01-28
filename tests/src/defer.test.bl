@@ -102,6 +102,42 @@ f11 :: fn (list: *string) s32 {
 	return 1;
 }
 
+f12 :: fn (list: *string)  {
+	loop i := 0; i < 4; i += 1 {
+		defer str_append(list, "A");
+		continue;
+		str_append(list, "X");
+	}
+	defer str_append(list, "B");
+	loop i := 0; i < 4; i += 1 {
+		defer str_append(list, "C");
+		break;
+		str_append(list, "X");
+	}
+}
+
+f13 :: fn (list: *string) {
+	defer str_append(list, "A");
+	#if true {
+		defer str_append(list, "B");
+		defer str_append(list, "C");
+	} else {
+		defer str_append(list, "D");
+		defer str_append(list, "E");
+	}
+}
+
+f14 :: fn (list: *string) {
+	defer str_append(list, "A");
+	#if false {
+		defer str_append(list, "B");
+		defer str_append(list, "C");
+	} else {
+		defer str_append(list, "D");
+		defer str_append(list, "E");
+	}
+}
+
 defer_test_1 :: fn () #test {
 	list: string;
 	f1(&list);
@@ -178,3 +214,25 @@ defer_test_11 :: fn () #test {
 	test_eq(list, "AB");
 	str_terminate(&list);
 }
+
+defer_test_12 :: fn () #test {
+	list: string;
+	f12(&list);
+	test_eq(list, "AAAACB");
+	str_terminate(&list);
+}
+
+defer_test_13 :: fn () #test {
+	list: string;
+	f13(&list);
+	test_eq(list, "CBA");
+	str_terminate(&list);
+}
+
+defer_test_14 :: fn () #test {
+	list: string;
+	f14(&list);
+	test_eq(list, "EDA");
+	str_terminate(&list);
+}
+

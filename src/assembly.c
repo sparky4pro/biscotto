@@ -457,8 +457,8 @@ struct assembly *assembly_new(const struct target *target) {
 
 		static struct id assembly_module_id;
 		id_init(&assembly_module_id, cstr("__assembly_module"));
-		struct scope_entry *scope_entry = scope_create_entry(scope_thread_local, SCOPE_ENTRY_NAMED_SCOPE, &assembly_module_id, NULL, false);
-		scope_entry->data.scope         = assembly->module_scope;
+		struct scope_entry *scope_entry = scope_create_entry(scope_thread_local, .kind = SCOPE_ENTRY_NAMED_SCOPE, .id = &assembly_module_id);
+		scope_entry->as.scope           = assembly->module_scope;
 
 		scope_insert(assembly->gscope, SCOPE_DEFAULT_LAYER, scope_entry);
 

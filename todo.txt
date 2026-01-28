@@ -16,8 +16,8 @@ expected_k_offset := outer_info.members[0].offset_bytes;
 @compiler 4
 Check mutability of member_ptr and addrof in general after recent changes.
 
-@docs 2
-Copy button sometimes covers part of the documentation in web.
+@compiler 2
+Can we generate default return for void returning functions in AST stage?
 
 @compiler 4
 Check is we cannot somehow reduce temp allocas.
@@ -25,11 +25,27 @@ Check is we cannot somehow reduce temp allocas.
 For example on unroll generation, we create temp for comptime values which cannot be converted to
 constants. Cannot we use LLVM const GEP instead if it's a thing?
 
+@compiler 1
+Allow #if with then and used as expressions.
+
+@compiler 1
+Add support for static #switch.
+
+@compiler 2
+Add support for struct initializers having pointer to parent declaration.
+
+	FOO :: Foo.{ &FOO };
+
 @compiler 2
 Introduce #nocomptime directive to mark functions which should never be executed in compile time?
 
 @bug 2
 This is not parsed properly: 'bar() catch;'
+
+@bug 3
+Missing error report on:
+
+	ptr += 1;
 
 @bug 5
 New comptime local value setup cause issues with setting struct members via pointer.

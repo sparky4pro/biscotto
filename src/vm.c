@@ -337,67 +337,67 @@ void calculate_binop(struct mir_type *src_type,
                      vm_stack_ptr_t   lhs,
                      vm_stack_ptr_t   rhs,
                      enum binop_kind  op) {
-#define ARITHMETIC(T)                                                  \
-	case BINOP_ADD:                                                    \
+#define ARITHMETIC(T) \
+	case BINOP_ADD: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) + vm_read_as(T, rhs)); \
-		break;                                                         \
-	case BINOP_SUB:                                                    \
+		break; \
+	case BINOP_SUB: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) - vm_read_as(T, rhs)); \
-		break;                                                         \
-	case BINOP_MUL:                                                    \
+		break; \
+	case BINOP_MUL: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) * vm_read_as(T, rhs)); \
 		break;
 
-#define ARITHMETIC_DIV_INT(T)                                                            \
-	case BINOP_DIV:                                                                      \
+#define ARITHMETIC_DIV_INT(T) \
+	case BINOP_DIV: \
 		if (vm_read_as(T, rhs) == 0) babort("Divide by zero, this should be an error!"); \
-		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs));                   \
-		break;
-
-#define ARITHMETIC_DIV_FLOAT(T)                                        \
-	case BINOP_DIV:                                                    \
 		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs)); \
 		break;
 
-#define RELATIONAL(T)                                                      \
-	case BINOP_EQ:                                                         \
+#define ARITHMETIC_DIV_FLOAT(T) \
+	case BINOP_DIV: \
+		vm_write_as(T, dest, vm_read_as(T, lhs) / vm_read_as(T, rhs)); \
+		break;
+
+#define RELATIONAL(T) \
+	case BINOP_EQ: \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) == vm_read_as(T, rhs)); \
-		break;                                                             \
-	case BINOP_NEQ:                                                        \
+		break; \
+	case BINOP_NEQ: \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) != vm_read_as(T, rhs)); \
-		break;                                                             \
-	case BINOP_GREATER:                                                    \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) > vm_read_as(T, rhs));  \
-		break;                                                             \
-	case BINOP_LESS:                                                       \
-		vm_write_as(bool, dest, vm_read_as(T, lhs) < vm_read_as(T, rhs));  \
-		break;                                                             \
-	case BINOP_LESS_EQ:                                                    \
+		break; \
+	case BINOP_GREATER: \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) > vm_read_as(T, rhs)); \
+		break; \
+	case BINOP_LESS: \
+		vm_write_as(bool, dest, vm_read_as(T, lhs) < vm_read_as(T, rhs)); \
+		break; \
+	case BINOP_LESS_EQ: \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) <= vm_read_as(T, rhs)); \
-		break;                                                             \
-	case BINOP_GREATER_EQ:                                                 \
+		break; \
+	case BINOP_GREATER_EQ: \
 		vm_write_as(bool, dest, vm_read_as(T, lhs) >= vm_read_as(T, rhs)); \
 		break;
 
-#define LOGICAL(T)                                                     \
-	case BINOP_AND:                                                    \
+#define LOGICAL(T) \
+	case BINOP_AND: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) & vm_read_as(T, rhs)); \
-		break;                                                         \
-	case BINOP_OR:                                                     \
+		break; \
+	case BINOP_OR: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) | vm_read_as(T, rhs)); \
-		break;                                                         \
-	case BINOP_XOR:                                                    \
+		break; \
+	case BINOP_XOR: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) ^ vm_read_as(T, rhs)); \
 		break;
 
-#define OTHER(T)                                                        \
-	case BINOP_MOD:                                                     \
-		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs));  \
-		break;                                                          \
-	case BINOP_SHR:                                                     \
+#define OTHER(T) \
+	case BINOP_MOD: \
+		vm_write_as(T, dest, vm_read_as(T, lhs) % vm_read_as(T, rhs)); \
+		break; \
+	case BINOP_SHR: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) >> vm_read_as(T, rhs)); \
-		break;                                                          \
-	case BINOP_SHL:                                                     \
+		break; \
+	case BINOP_SHL: \
 		vm_write_as(T, dest, vm_read_as(T, lhs) << vm_read_as(T, rhs)); \
 		break;
 
@@ -528,41 +528,41 @@ void calculate_binop(struct mir_type *src_type,
 }
 
 void calculate_unop(vm_stack_ptr_t dest, vm_stack_ptr_t v, enum unop_kind op, struct mir_type *type) {
-#define UNOP_CASE(T)                                     \
-	case sizeof(T): {                                    \
-		switch (op) {                                    \
-		case UNOP_NOT:                                   \
-			vm_write_as(T, dest, !vm_read_as(T, v));     \
-			break;                                       \
-		case UNOP_BIT_NOT:                               \
-			vm_write_as(T, dest, ~vm_read_as(T, v));     \
-			break;                                       \
-		case UNOP_NEG:                                   \
+#define UNOP_CASE(T) \
+	case sizeof(T): { \
+		switch (op) { \
+		case UNOP_NOT: \
+			vm_write_as(T, dest, !vm_read_as(T, v)); \
+			break; \
+		case UNOP_BIT_NOT: \
+			vm_write_as(T, dest, ~vm_read_as(T, v)); \
+			break; \
+		case UNOP_NEG: \
 			vm_write_as(T, dest, vm_read_as(T, v) * -1); \
-			break;                                       \
-		case UNOP_POS:                                   \
-			vm_write_as(T, dest, vm_read_as(T, v));      \
-			break;                                       \
-		default:                                         \
-			BL_UNIMPLEMENTED;                            \
-		}                                                \
+			break; \
+		case UNOP_POS: \
+			vm_write_as(T, dest, vm_read_as(T, v)); \
+			break; \
+		default: \
+			BL_UNIMPLEMENTED; \
+		} \
 	} break
 
-#define UNOP_CASE_REAL(T)                                \
-	case sizeof(T): {                                    \
-		switch (op) {                                    \
-		case UNOP_NOT:                                   \
-			vm_write_as(T, dest, !vm_read_as(T, v));     \
-			break;                                       \
-		case UNOP_NEG:                                   \
+#define UNOP_CASE_REAL(T) \
+	case sizeof(T): { \
+		switch (op) { \
+		case UNOP_NOT: \
+			vm_write_as(T, dest, !vm_read_as(T, v)); \
+			break; \
+		case UNOP_NEG: \
 			vm_write_as(T, dest, vm_read_as(T, v) * -1); \
-			break;                                       \
-		case UNOP_POS:                                   \
-			vm_write_as(T, dest, vm_read_as(T, v));      \
-			break;                                       \
-		default:                                         \
-			BL_UNIMPLEMENTED;                            \
-		}                                                \
+			break; \
+		case UNOP_POS: \
+			vm_write_as(T, dest, vm_read_as(T, v)); \
+			break; \
+		default: \
+			BL_UNIMPLEMENTED; \
+		} \
 	} break
 
 	const usize s = type->store_size_bytes;
@@ -1084,7 +1084,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 	const u64 prev_is_comptime_run = vm_override_var(vm, vm->assembly->is_comptime_run, true);
 
 	if (!resume) {
-		struct mir_instr *fn_entry_instr = fn->first_block->entry_instr;
+		struct mir_instr *fn_entry_instr = fn->entry_block->entry_instr;
 		// push terminal frame on stack
 		push_ra(vm, optional_call);
 		// allocate local variables
@@ -1395,7 +1395,7 @@ void interp_instr_member_ptr(struct virtual_machine *vm, struct mir_instr_member
 
 	if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
 		bassert(member_ptr->scope_entry && member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
-		struct mir_member *member = member_ptr->scope_entry->data.member;
+		struct mir_member *member = member_ptr->scope_entry->as.member;
 		bassert(member);
 		const s64 index = member->index;
 
@@ -1562,7 +1562,7 @@ void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref
 
 	switch (entry->kind) {
 	case SCOPE_ENTRY_VAR: {
-		struct mir_var *var = entry->data.var;
+		struct mir_var *var = entry->as.var;
 		bassert(var);
 
 		vm_stack_ptr_t real_ptr = vm_read_var(vm, var);
@@ -1577,7 +1577,7 @@ void interp_instr_decl_ref(struct virtual_machine *vm, struct mir_instr_decl_ref
 		break;
 
 	case SCOPE_ENTRY_ARG: {
-		struct mir_arg *arg = entry->data.arg;
+		struct mir_arg *arg = entry->as.arg;
 		bassert(arg);
 		// Caller is optional, when we call function implicitly there is no call instruction which
 		// we can use, so we need to handle also this situation. In such case we expect all
@@ -1830,10 +1830,10 @@ enum vm_interp_state interp_instr_call(struct virtual_machine *vm, struct mir_in
 	} else {
 		// Push current frame stack top. (Later popped by ret instruction)
 		push_ra(vm, call);
-		bassert(fn->first_block->entry_instr);
+		bassert(fn->entry_block->entry_instr);
 		stack_alloc_local_vars(vm, fn);
 		// setup entry instruction
-		set_pc(vm, fn->first_block->entry_instr);
+		set_pc(vm, fn->entry_block->entry_instr);
 	}
 	return VM_INTERP_PASSED;
 }
@@ -2032,6 +2032,8 @@ void eval_instr(struct virtual_machine *vm, struct mir_instr *instr) {
 	case MIR_INSTR_BR:
 	case MIR_INSTR_USING:
 	case MIR_INSTR_DESIGNATOR:
+	case MIR_INSTR_DEFER:
+	case MIR_INSTR_DEFER_INSERT:
 		break;
 
 	default:
@@ -2152,7 +2154,7 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 		// directly inside the analyze pass, but it should be here.
 		break;
 	case SCOPE_ENTRY_MEMBER: {
-		struct mir_member *member = member_ptr->scope_entry->data.member;
+		struct mir_member *member = member_ptr->scope_entry->as.member;
 		vm_stack_ptr_t     strct_ptr;
 
 		if (member_ptr->target_ptr->kind == MIR_INSTR_CONST) {
@@ -2169,7 +2171,7 @@ void eval_instr_member_ptr(struct virtual_machine       UNUSED(*vm),
 	}
 
 	case SCOPE_ENTRY_VARIANT: {
-		struct mir_variant *variant = member_ptr->scope_entry->data.variant;
+		struct mir_variant *variant = member_ptr->scope_entry->as.variant;
 		MIR_CEV_WRITE_AS(u64, &member_ptr->base.value, variant->value);
 		break;
 	}
@@ -2377,19 +2379,19 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
 
 	switch (entry->kind) {
 	case SCOPE_ENTRY_FN:
-		MIR_CEV_WRITE_AS(struct mir_fn *, &decl_ref->base.value, entry->data.fn);
+		MIR_CEV_WRITE_AS(struct mir_fn *, &decl_ref->base.value, entry->as.fn);
 		break;
 
 	case SCOPE_ENTRY_TYPE:
-		MIR_CEV_WRITE_AS(struct mir_type *, &decl_ref->base.value, entry->data.type);
+		MIR_CEV_WRITE_AS(struct mir_type *, &decl_ref->base.value, entry->as.type);
 		break;
 
 	case SCOPE_ENTRY_VAR:
-		MIR_CEV_WRITE_AS(vm_stack_ptr_t, &decl_ref->base.value, entry->data.var->value.data);
+		MIR_CEV_WRITE_AS(vm_stack_ptr_t, &decl_ref->base.value, entry->as.var->value.data);
 		break;
 
 	case SCOPE_ENTRY_VARIANT:
-		MIR_CEV_WRITE_AS(u64 *, &decl_ref->base.value, &entry->data.variant->value);
+		MIR_CEV_WRITE_AS(u64 *, &decl_ref->base.value, &entry->as.variant->value);
 		break;
 
 	case SCOPE_ENTRY_NAMED_SCOPE:
@@ -2397,7 +2399,7 @@ void eval_instr_decl_ref(struct virtual_machine UNUSED(*vm), struct mir_instr_de
 		break;
 
 	case SCOPE_ENTRY_ARG: {
-		struct mir_arg *arg = entry->data.arg;
+		struct mir_arg *arg = entry->as.arg;
 		bassert(arg);
 
 		if (!arg->generation_call) break;

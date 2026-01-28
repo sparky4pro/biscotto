@@ -384,9 +384,7 @@ struct ast {
 #undef GEN_AST_DATA
 	} data;
 
-#if BL_DEBUG_ENABLE
-	u64 _serial;
-#endif
+	u64 id;
 };
 
 void        ast_arena_init(struct arena *arena, u32 owner_thread_index);

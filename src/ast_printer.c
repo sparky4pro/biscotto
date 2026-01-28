@@ -4,14 +4,10 @@
 #include <stdio.h>
 
 static inline void print_address(struct ast *node, FILE *stream) {
-#if BL_DEBUG_ENABLE
 	if (node)
-		fprintf(stream, " %llu ", node->_serial);
+		fprintf(stream, " %llu ", node->id);
 	else
 		fprintf(stream, " (null) ");
-#else
-	fprintf(stream, " %p ", node);
-#endif
 }
 
 #define print_head(_node, _pad, _stream) _print_head((struct ast *)(_node), (_pad), (_stream))

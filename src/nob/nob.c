@@ -112,6 +112,10 @@ void blc(void) {
 	Cmd  cmd = {0};
 	Proc procs[ARRAY_LEN(src)];
 
+	#define CL_OPTIONS "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT"
+	#define CL_OPTIONS_DEBUG "-Od", "-Ob0", "-Zi", "-FS"
+	#define CL_OPTIONS_RELEASE "-O2", "-Oi", "-DNDEBUG"
+
 	for (int i = 0; i < src_num; ++i) {
 		const bool is_cxx = ends_with(src[i], ".cpp");
 		cmd_append(&cmd,
@@ -139,11 +143,11 @@ void blc(void) {
 		           "-DBL_VERSION_MINOR=" STR(BL_VERSION_MINOR),
 		           "-DBL_VERSION_PATCH=" STR(BL_VERSION_PATCH),
 		           "-DYAML_DECLARE_STATIC");
-		cmd_append(&cmd, "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT");
+		cmd_append(&cmd, CL_OPTIONS);
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-Od", "-Zi", "-FS");
+			cmd_append(&cmd, CL_OPTIONS_DEBUG);
 		} else {
-			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG");
+			cmd_append(&cmd, CL_OPTIONS_RELEASE);
 		}
 		cmd_append(&cmd, temp_sprintf("-DBL_ASSERT_ENABLE=%d", ASSERT_ENABLE ? 1 : 0));
 		cmd_append(&cmd, temp_sprintf("-DBL_DEBUG_ENABLE=%d", IS_DEBUG ? 1 : 0));
@@ -163,11 +167,11 @@ void blc(void) {
 		nob_read_entire_dir(BUILD_DIR, &files);
 
 		cmd_append(&cmd, "cl", "-nologo");
-		cmd_append(&cmd, "-D_WIN32", "-D_WINDOWS", "-DNOMINMAX", "-D_HAS_EXCEPTIONS=0", "-GF", "-MT");
+		cmd_append(&cmd, CL_OPTIONS);
 		if (IS_DEBUG) {
-			cmd_append(&cmd, "-Od", "-Zi", "-FS");
+			cmd_append(&cmd, CL_OPTIONS_DEBUG);
 		} else {
-			cmd_append(&cmd, "-O2", "-Oi", "-DNDEBUG");
+			cmd_append(&cmd, CL_OPTIONS_RELEASE);
 		}
 		cmd_append(&cmd, temp_sprintf("-DBL_ASSERT_ENABLE=%d", ASSERT_ENABLE ? 1 : 0));
 		cmd_append(&cmd, temp_sprintf("-DBL_DEBUG_ENABLE=%d", IS_DEBUG ? 1 : 0));
@@ -183,6 +187,9 @@ void blc(void) {
 		}
 
 		cmd_append(&cmd, "-link", "-LTCG", "-incremental:no", "-opt:ref", "-subsystem:console", "-NODEFAULTLIB:MSVCRTD.lib");
+		if (IS_DEBUG) {
+			cmd_append(&cmd, "-DEBUG:FULL");
+		}
 
 		cmd_append(&cmd,
 		           BUILD_DIR "/libyaml/libyaml.lib",

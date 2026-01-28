@@ -1,0 +1,30 @@
+#import "std/print"
+
+VALUE :: true;
+
+no_scoping :: fn () {
+    #if VALUE {
+        x := 10;
+    } else {
+        x := 20;
+    }
+    print("x = %\n", x);
+}
+
+platform :: fn () {
+    #if PLATFORM == .WINDOWS {
+        print("This code is generated only on Windows!\n");
+    } else if PLATFORM == .LINUX {
+        print("This code is generated only on Linux!\n");
+    } else if PLATFORM == .DARWIN {
+        print("This code is generated only on Mac!\n");
+    } else {
+        print("Unknown platform!\n");
+    }
+}
+
+main :: fn () s32 {
+    no_scoping();
+    platform();
+    return 0;
+}

@@ -1,0 +1,329 @@
+#scope_private
+
+X :: 10;
+x := 10;
+V :: true;
+
+empty :: fn () #test {
+	#if V {}
+}
+
+empty_code_before :: fn () #test {
+	n := 0;
+	n += 1;
+	#if V {}
+}
+
+empty_code_after :: fn () #test {
+	#if V {}
+	n := 0;
+	n += 1;
+}
+
+then_only :: fn () #test {
+	n := 0;
+	#if V {
+		n += 1;
+	}
+	test_eq(n, 1);
+}
+
+then_else :: fn () #test {
+	n := 0;
+	#if V {
+		n += 1;
+	} else {
+		n -= 1;
+	}
+	test_eq(n, 1);
+}
+
+then_else2 :: fn () #test {
+	n := 0;
+	#if !V {
+		n += 1;
+	} else {
+		n -= 1;
+	}
+	test_eq(n, -1);
+}
+
+nested_if :: fn () #test {
+	n := 0;
+	#if V {
+		n += 1;
+		if n == 1 {
+			n += 1;
+		}
+	} else {
+		n -= 1;
+		if n == -1 {
+			n -= 1;
+		}
+	}
+	test_eq(n, 2);
+}
+
+nested_if2 :: fn () #test {
+	n := 0;
+	#if !V {
+		n += 1;
+		if n == 1 {
+			n += 1;
+		}
+	} else {
+		n -= 1;
+		if n == -1 {
+			n -= 1;
+		}
+	}
+	test_eq(n, -2);
+}
+
+early_return :: fn () #test {
+	func :: fn () s32 {
+		#if V {
+			return 0;
+		}
+		return 1;
+	};
+	test_eq(func(), 0);
+}
+
+early_return2 :: fn () #test {
+	func :: fn () s32 {
+		#if !V {
+			return 0;
+		}
+		return 1;
+	};
+	test_eq(func(), 1);
+}
+
+early_return_else :: fn () #test {
+	func :: fn () s32 {
+		#if V {
+			return 0;
+		} else {
+			return 1;
+		}
+		return 2;
+	};
+	test_eq(func(), 0);
+}
+
+early_return_else2 :: fn () #test {
+	func :: fn () s32 {
+		#if V {
+			return 0;
+		} else {
+			return 1;
+		}
+	};
+	test_eq(func(), 0);
+}
+
+nested :: fn () #test {
+	n := 0;
+	#if V {
+		n += 1;
+		#if V {
+			n += 1;
+			#if !V {
+				n += 1;
+				#if V {
+					n += 1;
+				}
+			}
+		}
+	}
+	test_eq(n, 2);
+}
+
+with_loop :: fn () #test {
+	n := 0;
+	#if V {
+		loop i := 0; i < 10; i += 1 {
+			n += 1;
+		}
+	}
+	test_eq(n, 10);
+}
+
+else_if :: fn () #test {
+	N :: 10;
+	n := 0;
+	#if N == 0 {
+		n -= 1;
+	} else if N == 10 {
+		n += 1;
+	}
+	test_eq(n, 1);
+}
+
+generated :: fn () #test {
+	func :: fn (T: type #comptime) s32 {
+		#if T == u32 {
+			return 1;
+		} else if T == s32 {
+			return 2;
+		} else {
+			return 0;
+		}
+	};
+
+	test_eq(func(u32), 1);
+	test_eq(func(s32), 2);
+	test_eq(func(f32), 0);
+}
+
+poly :: fn () #test {
+	func :: fn (v: ?T) T {
+		#if T == s32 {
+			return 1;
+		} else if T == f32 {
+			return 1.f;
+		}
+	};
+
+	test_eq(func(1), 1);
+	test_eq(func(1.f), 1.f);
+}
+
+no_scope :: fn () #test {
+	#if V {
+		a := 10;
+	} else {
+		a := 20;
+	}
+	a += 1;
+	test_eq(a, 11);
+}
+
+no_scope2 :: fn () #test {
+	#if !V {
+		a := 10;
+	} else {
+		a := 20;
+	}
+	a += 1;
+	test_eq(a, 21);
+}
+
+no_scope_nested :: fn () #test {
+	#if V {
+		#if V {
+			a := 10;
+		}
+	} else {
+		a := 20;
+	}
+	a += 1;
+	test_eq(a, 11);
+}
+
+with_panic :: fn () #test {
+	n := 0;
+	#if V {
+		if n != 0 { panic(); }
+	}
+	test_eq(n, 0);
+}
+
+with_phi :: fn () #test {
+	#if V {
+		if x == 10 {}
+	}
+	assert(x > 0 && x < 11);
+}
+
+with_removed_function :: fn () #test {
+	func :: fn () #enable_if false {};
+	#if V {
+	}
+	func();
+}
+
+with_then :: fn () #test {
+	n := 0;
+	#if V then n += 1;
+	test_eq(n, 1);
+}
+
+with_then2 :: fn () #test {
+	n := 0;
+	#if !V then n += 1;
+	test_eq(n, 0);
+}
+
+in_loop_with_break :: fn () #test {
+	n := 0;
+	loop i := 0; i < 10; i += 1 {
+		n += 1;
+		#if V {
+			break;
+		}
+	}
+	test_eq(n, 1);
+}
+
+in_loop_with_continue :: fn () #test {
+	n := 0;
+	loop i := 0; i < 10; i += 1 {
+		#if V {
+			continue;
+		}
+		n += 1;
+	}
+	test_eq(n, 0);
+}
+
+in_switch :: fn () #test {
+	func :: fn (x: s32) s32 {
+		n := 0;
+		switch x {
+			0 {
+				#if V {
+					n = 1;
+				} else {
+					n = 2;
+				}
+			}
+			1 {
+				#if !V {
+					n = 3;
+				} else {
+					n = 4;
+				}
+			}
+			default {
+				#if V {
+					n = 5;
+				} else {
+					n = 6;
+				}
+			}
+		}
+		return n;
+	};
+
+	test_eq(func(0), 1);
+	test_eq(func(1), 4);
+	test_eq(func(2), 5);
+}
+
+in_catch_block :: fn () #test {
+	func :: fn () Error {
+		return error("Shit!");
+	};
+
+	n := 0;
+	func() catch {
+		#if V {
+			n = 1;
+		} else {
+			n = 2;
+		}
+	};
+	test_eq(n, 1);
+}

@@ -5,14 +5,12 @@
 
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope) {
-	struct ast *node  = arena_alloc(arena);
-	node->kind        = c;
-	node->owner_scope = parent_scope;
-	node->location    = tok ? &tok->location : NULL;
-#if BL_DEBUG_ENABLE
-	static batomic_s64 serial = 0;
-	node->_serial             = batomic_fetch_add_s64(&serial, 1);
-#endif
+	struct ast *node      = arena_alloc(arena);
+	node->kind            = c;
+	node->owner_scope     = parent_scope;
+	node->location        = tok ? &tok->location : NULL;
+	static batomic_s64 id = 0;
+	node->id              = batomic_fetch_add_s64(&id, 1);
 	return node;
 }
 

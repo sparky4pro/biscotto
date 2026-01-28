@@ -62,7 +62,10 @@ void print_trace_impl(void);
 	} \
 	(void)0
 
-#define bis_test_bl(location) ((location) && str_match((location)->unit->filename, cstr("test.bl")))
+#define BL_TEST_FILEPATH        "C:/develop/bl/tests/test.bl"
+#define BL_IS_TEST_BL(location) (((location) && (location)->unit) && str_match((location)->unit->filepath, cstr(BL_TEST_FILEPATH)))
+#define BL_DEBUG_BREAK_IF_TEST(location) \
+	if (BL_IS_TEST_BL(location)) BL_DEBUG_BREAK
 
 #else // BL_DEBUG_ENABLE
 #define print_trace() (void)0
@@ -80,7 +83,12 @@ void print_trace_impl(void);
 	} \
 	(void)0
 
-#define bis_test_bl(location) (false)
+#define BL_IS_TEST_BL(location) (false)
+#define BL_DEBUG_BREAK_IF_TEST(location) \
+	while (0) { \
+	} \
+	(void)0
+
 #endif // BL_DEBUG_ENABLE
 
 #if BL_ASSERT_ENABLE

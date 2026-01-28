@@ -106,10 +106,10 @@ static void print_referencing(struct scope *scope, FILE *stream) {
 		struct scope       *scope = NULL;
 		switch (entry->kind) {
 		case SCOPE_ENTRY_NAMED_SCOPE:
-			scope = entry->data.scope;
+			scope = entry->as.scope;
 			break;
 		case SCOPE_ENTRY_VAR: {
-			struct mir_var *var = entry->data.var;
+			struct mir_var *var = entry->as.var;
 			if (var->value.type->kind == MIR_TYPE_NAMED_SCOPE) {
 				scope = MIR_CEV_READ_AS(struct scope *, &var->value);
 				bmagic_assert(scope);

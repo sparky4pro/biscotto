@@ -14,7 +14,13 @@
 struct context {
 	struct assembly *assembly;
 	FILE            *stream;
+	str_buf_t        comment;
 };
+
+static inline void add_comment(struct context *ctx, const char *text) {
+	str_buf_append(&ctx->comment, make_str_from_c(text));
+	str_buf_append(&ctx->comment, cstr(" "));
+}
 
 static void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr);
 
@@ -240,6 +246,14 @@ _print_const_value(struct context *ctx, struct mir_type *type, vm_stack_ptr_t va
 	}
 }
 
+static inline void print_ast(struct context *ctx, struct ast *ast) {
+	if (ast) {
+		fprintf(ctx->stream, "(AST:%llu)", ast->id);
+	} else {
+		fprintf(ctx->stream, "(AST:none)");
+	}
+}
+
 static void print_instr_set_initializer(struct context *ctx, struct mir_instr_set_initializer *si);
 static void print_instr_toany(struct context *ctx, struct mir_instr_to_any *toany);
 static void print_instr_phi(struct context *ctx, struct mir_instr_phi *phi);
@@ -253,6 +267,9 @@ static void print_instr_addrof(struct context *ctx, struct mir_instr_addrof *add
 static void print_instr_elem_ptr(struct context *ctx, struct mir_instr_elem_ptr *elem_ptr);
 static void print_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr);
 static void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br);
+static void print_instr_defer(struct context *ctx, struct mir_instr_defer *defer);
+static void print_instr_defer_insert(struct context *ctx, struct mir_instr_defer_insert *defer_insert);
+static void print_instr_cond_insert(struct context *ctx, struct mir_instr_cond_insert *cond_insert);
 static void print_instr_compound(struct context *ctx, struct mir_instr_compound *init);
 static void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs);
 static void print_instr_br(struct context *ctx, struct mir_instr_br *br);
@@ -300,7 +317,7 @@ void print_comptime_value_or_id(struct context *ctx, struct mir_instr *instr) {
 		return;
 	}
 
-	const bool is_ptr  = instr->value.type ? mir_is_pointer_type(instr->value.type) : false;
+	const bool is_ptr = instr->value.type ? mir_is_pointer_type(instr->value.type) : false;
 
 	if (!instr->value.is_comptime || instr->state != MIR_IS_COMPLETE || !is_ptr) {
 		fprintf(ctx->stream, "%%%llu", (unsigned long long)instr->id);
@@ -527,7 +544,7 @@ void print_instr_compound(struct context *ctx, struct mir_instr_compound *init) 
 	}
 	fprintf(ctx->stream, "}");
 
-	if (init->is_naked) fprintf(ctx->stream, " /* naked */");
+	if (init->is_naked) add_comment(ctx, "NAKED");
 }
 
 void print_instr_vargs(struct context *ctx, struct mir_instr_vargs *vargs) {
@@ -616,6 +633,16 @@ void print_instr_unop(struct context *ctx, struct mir_instr_unop *unop) {
 	print_comptime_value_or_id(ctx, unop->expr);
 }
 
+void print_instr_defer(struct context *ctx, struct mir_instr_defer *defer) {
+	print_instr_head(ctx, &defer->base, "defer");
+	print_ast(ctx, defer->code);
+}
+
+void print_instr_defer_insert(struct context *ctx, struct mir_instr_defer_insert *defer_insert) {
+	print_instr_head(ctx, &defer_insert->base, "deferinsert");
+	fprintf(ctx->stream, "%s", defer_insert->whole_tree ? "TREE" : "SCOPE");
+}
+
 void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br) {
 	print_instr_head(ctx, &cond_br->base, "br");
 	print_comptime_value_or_id(ctx, cond_br->cond);
@@ -627,6 +654,15 @@ void print_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *cond_br)
 	        (unsigned long long)cond_br->then_block->base.id,
 	        STR_ARG(else_block),
 	        (unsigned long long)cond_br->else_block->base.id);
+}
+
+void print_instr_cond_insert(struct context *ctx, struct mir_instr_cond_insert *cond_insert) {
+	print_instr_head(ctx, &cond_insert->base, "insert");
+	print_comptime_value_or_id(ctx, cond_insert->cond);
+	fprintf(ctx->stream, " ? ");
+	print_ast(ctx, cond_insert->then_block);
+	fprintf(ctx->stream, " : ");
+	print_ast(ctx, cond_insert->else_block);
 }
 
 void print_instr_arg(struct context *ctx, struct mir_instr_arg *arg) {
@@ -705,7 +741,7 @@ void print_instr_switch(struct context *ctx, struct mir_instr_switch *sw) {
 		        ": %%" STR_FMT "_%llu",
 		        STR_ARG(block_name),
 		        (unsigned long long)c->block->base.id);
-		if (i < sarrlenu(sw->cases) - 1) fprintf(ctx->stream, "; ");
+		if (i < sarrlenu(sw->cases) - 1) fprintf(ctx->stream, ", ");
 	}
 
 	const str_t default_block_name = sw->default_block->name;
@@ -814,14 +850,15 @@ void print_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *ref) {
 
 	const str_t name = ref->rid->str;
 	fprintf(ctx->stream, STR_FMT, STR_ARG(name));
-	if (ref->accept_incomplete_type) fprintf(ctx->stream, " /* accept incomplete */");
+	if (ref->accept_incomplete_type) add_comment(ctx, "ACCEPT-INCOMPLETE");
+	str_buf_append_fmt(&ctx->comment, "LAYER={u32} ", ref->scope_layer);
 }
 
 void print_instr_decl_direct_ref(struct context *ctx, struct mir_instr_decl_direct_ref *ref) {
 	print_instr_head(ctx, &ref->base, "declref");
 
 	print_comptime_value_or_id(ctx, ref->ref);
-	fprintf(ctx->stream, " /* direct */");
+	add_comment(ctx, "DIRECT");
 }
 
 void print_instr_const(struct context *ctx, struct mir_instr_const *cnst) {
@@ -891,28 +928,18 @@ void print_instr_block(struct context *ctx, struct mir_instr_block *block) {
 	// if (block->base.prev || is_global) fprintf(ctx->stream, "\n");
 #if BL_DEBUG_ENABLE
 	if (block->base.ref_count < 0) {
-		fprintf(ctx->stream,
-		        "%%" STR_FMT "_%llu (-):",
-		        STR_ARG(block->name),
-		        (unsigned long long)block->base.id);
+		fprintf(ctx->stream, "%%" STR_FMT "_%llu (-):", STR_ARG(block->name), (unsigned long long)block->base.id);
 	} else {
-		fprintf(ctx->stream,
-		        "%%" STR_FMT "_%llu (%u):",
-		        STR_ARG(block->name),
-		        (unsigned long long)block->base.id,
-		        block->base.ref_count);
+		fprintf(ctx->stream, "%%" STR_FMT "_%llu (%u):", STR_ARG(block->name), (unsigned long long)block->base.id, block->base.ref_count);
 	}
 #else
-	fprintf(ctx->stream,
-	        "%%" STR_FMT "_%llu:",
-	        STR_ARG(block->name),
-	        (unsigned long long)block->base.id);
+	fprintf(ctx->stream, "%%" STR_FMT "_%llu:", STR_ARG(block->name), (unsigned long long)block->base.id);
 #endif
 	if (is_global) {
 		fprintf(ctx->stream, " {\n");
 	} else {
 		if (block->is_unreachable)
-			fprintf(ctx->stream, " /* NEVER REACHED */\n");
+			fprintf(ctx->stream, "; NEVER REACHED\n");
 		else
 			fprintf(ctx->stream, "\n");
 	}
@@ -931,7 +958,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 	bassert(fn);
 
 	fprintf(ctx->stream, "\n");
-	if (fn_proto->base.state == MIR_IS_COMPLETE) fprintf(ctx->stream, "/* analyzed */\n");
+	if (fn_proto->base.state == MIR_IS_COMPLETE) fprintf(ctx->stream, "; ANALYZED\n");
 	if (fn->linkage_name.len)
 		fprintf(ctx->stream, "@" STR_FMT " ", STR_ARG(fn->linkage_name));
 	else
@@ -948,7 +975,7 @@ void print_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *fn_pro
 
 	print_flags(ctx, fn->flags);
 
-	struct mir_instr_block *tmp = fn->first_block;
+	struct mir_instr_block *tmp = fn->entry_block;
 	if (!tmp) return;
 	fprintf(ctx->stream, "{\n");
 	while (tmp) {
@@ -1043,8 +1070,17 @@ void print_instr(struct context *ctx, struct mir_instr *instr) {
 	case MIR_INSTR_TYPE_ENUM:
 		print_instr_type_enum(ctx, (struct mir_instr_type_enum *)instr);
 		break;
+	case MIR_INSTR_DEFER:
+		print_instr_defer(ctx, (struct mir_instr_defer *)instr);
+		break;
+	case MIR_INSTR_DEFER_INSERT:
+		print_instr_defer_insert(ctx, (struct mir_instr_defer_insert *)instr);
+		break;
 	case MIR_INSTR_COND_BR:
 		print_instr_cond_br(ctx, (struct mir_instr_cond_br *)instr);
+		break;
+	case MIR_INSTR_COND_INSERT:
+		print_instr_cond_insert(ctx, (struct mir_instr_cond_insert *)instr);
 		break;
 	case MIR_INSTR_BR:
 		print_instr_br(ctx, (struct mir_instr_br *)instr);
@@ -1125,20 +1161,18 @@ void print_instr(struct context *ctx, struct mir_instr *instr) {
 		break;
 	}
 
-	bool has_comment = false;
-	if (instr->value.is_comptime) {
-		has_comment = true;
-		fprintf(ctx->stream, " // comptime");
-	}
-
+	if (instr->value.is_comptime) add_comment(ctx, "COMPTIME");
 	if (ctx->assembly->target->opt == ASSEMBLY_OPT_DEBUG) {
-		if (instr->node && instr->node->location) {
+		if (instr->kind != MIR_INSTR_BLOCK && instr->node && instr->node->location) {
 			const struct location *loc = instr->node->location;
-			fprintf(ctx->stream, " %s[" STR_FMT ":%d]", has_comment ? "" : "// ", STR_ARG(loc->unit->filename), loc->line);
+			str_buf_append_fmt(&ctx->comment, "[{str}:{u16}]", loc->unit->filename, loc->line);
 		}
 	}
-
+	if (ctx->comment.len > 0) {
+		fprintf(ctx->stream, " ; " STR_FMT, STR_ARG(ctx->comment));
+	}
 	fprintf(ctx->stream, "\n");
+	ctx->comment.len = 0;
 }
 
 void mir_print_instr(FILE *stream, struct assembly *assembly, struct mir_instr *instr) {

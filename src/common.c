@@ -220,6 +220,21 @@ void str_buf_append_fmt(str_buf_t *buf, const char *fmt, ...) {
 	va_end(args);
 }
 
+#define BVSNPRINT_NUMBER(T, T_VA_ARG) \
+	if (str_match(f, cstr(#T))) { \
+		const s32 s       = va_arg(args, T_VA_ARG); \
+		const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%i", s); \
+		if (buf) { \
+			const s32 len = MIN(space_left, tmp_len); \
+			memcpy(&buf[buf_index], tmp, len); \
+			buf_index += len; \
+		} else { \
+			buf_index += tmp_len; \
+		} \
+		i += f.len; \
+		goto PASSED; \
+	}
+
 s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args) {
 	const char *i         = fmt;
 	s32         buf_index = 0;
@@ -259,68 +274,12 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args) {
 			goto PASSED;
 		}
 
-		if (str_match(f, cstr("s32"))) {
-			const s32 s       = va_arg(args, s32);
-			const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%i", s);
-			if (buf) {
-				const s32 len = MIN(space_left, tmp_len);
-				memcpy(&buf[buf_index], tmp, len);
-				buf_index += len;
-			} else {
-				buf_index += tmp_len;
-			}
-
-			i += f.len;
-			goto PASSED;
-		}
-
-		if (str_match(f, cstr("u64"))) {
-			const u64 s = va_arg(args, u64);
-			if (buf) {
-				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%llu", s);
-				const s32 len     = MIN(space_left, tmp_len);
-				memcpy(&buf[buf_index], tmp, len);
-				buf_index += len;
-			} else {
-				const s32 tmp_len = snprintf(NULL, 0, "%llu", s);
-				buf_index += tmp_len;
-			}
-
-			i += f.len;
-			goto PASSED;
-		}
-
-		if (str_match(f, cstr("s64"))) {
-			const s64 s = va_arg(args, s64);
-			if (buf) {
-				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%lli", s);
-				const s32 len     = MIN(space_left, tmp_len);
-				memcpy(&buf[buf_index], tmp, len);
-				buf_index += len;
-			} else {
-				const s32 tmp_len = snprintf(NULL, 0, "%lli", s);
-				buf_index += tmp_len;
-			}
-
-			i += f.len;
-			goto PASSED;
-		}
-
-		if (str_match(f, cstr("u32"))) {
-			const u32 s = va_arg(args, u32);
-			if (buf) {
-				const s32 tmp_len = snprintf(tmp, static_arrlenu(tmp), "%u", s);
-				const s32 len     = MIN(space_left, tmp_len);
-				memcpy(&buf[buf_index], tmp, len);
-				buf_index += len;
-			} else {
-				const s32 tmp_len = snprintf(NULL, 0, "%u", s);
-				buf_index += tmp_len;
-			}
-
-			i += f.len;
-			goto PASSED;
-		}
+		BVSNPRINT_NUMBER(s16, s32);
+		BVSNPRINT_NUMBER(u16, u32);
+		BVSNPRINT_NUMBER(s32, s32);
+		BVSNPRINT_NUMBER(u32, u32);
+		BVSNPRINT_NUMBER(s64, s64);
+		BVSNPRINT_NUMBER(u64, u64);
 
 		switch (*i) {
 		case 's': {

@@ -20,11 +20,11 @@
 #define block_pop(ctx)         arrpop((ctx)->block_stack)
 #define block_get(ctx)         (arrlenu((ctx)->block_stack) ? arrlast((ctx)->block_stack) : NULL)
 
-#define consume_till(tokens, ...)                                 \
-	{                                                             \
-		enum sym _[] = {__VA_ARGS__};                             \
+#define consume_till(tokens, ...) \
+	{ \
+		enum sym _[] = {__VA_ARGS__}; \
 		tokens_consume_till2((tokens), static_arrlenu(_), &_[0]); \
-	}                                                             \
+	} \
 	(void)0
 
 enum hash_directive_flags {
@@ -320,17 +320,17 @@ bool parse_unit_docs(struct context *ctx) {
 // 'satisfied' is optional output set to parsed directive id if there is one.
 struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied, const bool is_in_expression) {
 	zone();
-#define set_satisfied(_hd)               \
-	{                                    \
+#define set_satisfied(_hd) \
+	{ \
 		if (satisfied) *satisfied = _hd; \
-	}                                    \
+	} \
 	(void)0
 
 	set_satisfied(HD_NONE);
 	struct token *tok_hash = tokens_consume_if(ctx->tokens, SYM_HASH);
 	if (!tok_hash) return_zone(NULL);
-	// Special case for static if
-	{
+
+	{ // Special case for static if
 		struct ast *if_stmt = parse_stmt_if(ctx, true);
 		if (if_stmt) {
 			set_satisfied(HD_STATIC_IF);
@@ -851,10 +851,10 @@ bool parse_semicolon_rq(struct context *ctx) {
 }
 
 bool hash_directive_to_flags(enum hash_directive_flags hd, u32 *out_flags) {
-#define FLAG_CASE(_c, _f)     \
-	case (_c):                \
+#define FLAG_CASE(_c, _f) \
+	case (_c): \
 		(*out_flags) |= (_f); \
-		return true;          \
+		return true; \
 		(void)0
 
 	switch (hd) {
@@ -983,10 +983,12 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static) {
 	bool is_semicolon_required          = !is_expression;
 	bool has_explicit_true_branch_block = false;
 
+	const enum scope_kind expected_scoping = is_static ? SCOPE_NONE : SCOPE_LEXICAL;
+
 	//
 	// Then branch
 	//
-	struct ast *true_branch = parse_block(ctx, SCOPE_LEXICAL);
+	struct ast *true_branch = parse_block(ctx, expected_scoping);
 	if (true_branch) {
 		if (is_expression) {
 			builder_msg(MSG_ERR, ERR_EXPECTED_EXPR, true_branch->location, CARET_WORD, "Blocks cannot be used in ternary if expressions.");
@@ -1038,7 +1040,7 @@ struct ast *parse_stmt_if(struct context *ctx, bool is_static) {
 	struct token *tok_else     = tokens_consume_if(ctx->tokens, SYM_ELSE);
 	if (tok_else) {
 		false_branch = parse_stmt_if(ctx, is_static);
-		if (!false_branch) false_branch = parse_block(ctx, SCOPE_LEXICAL);
+		if (!false_branch) false_branch = parse_block(ctx, expected_scoping);
 		if (false_branch) {
 			if (is_expression) {
 				builder_msg(MSG_ERR, ERR_EXPECTED_EXPR, false_branch->location, CARET_WORD, "Blocks cannot be used in ternary if expressions.");
@@ -1304,8 +1306,8 @@ struct ast *parse_stmt_defer(struct context *ctx) {
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
 	}
 
-	struct ast *defer           = ast_create_node(ctx->ast_arena, AST_STMT_DEFER, tok, scope_get(ctx));
-	defer->data.stmt_defer.expr = expr;
+	struct ast *defer            = ast_create_node(ctx->ast_arena, AST_STMT_DEFER, tok, scope_get(ctx));
+	defer->data.stmt_defer.expr  = expr;
 
 	return_zone(defer);
 }

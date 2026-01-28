@@ -218,6 +218,8 @@ str_buf_t _str_buf_dup(char *ptr, s32 len);
 // Formatting:
 //   {s}   - Zero terminated C string.
 //   {str} - Our string buffer or string view.
+//   {s16} - Signed 16bit integer.
+//   {u16} - Unsigned 16bit integer.
 //   {s32} - Signed 32bit integer.
 //   {u32} - Unsigned 32bit integer.
 //   {s64} - Signed 64bit integer.

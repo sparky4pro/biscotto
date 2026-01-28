@@ -30,28 +30,28 @@
 #define IMPL_CALL_TMP        cstr(".call.tmp")
 #define IMPL_TOSLICE_TMP     cstr(".toslice")
 
-#define PASS                    \
-	(struct result) {           \
+#define PASS \
+	(struct result) { \
 		.state = ANALYZE_PASSED \
 	}
 
-#define SKIP                  \
-	(struct result) {         \
+#define SKIP \
+	(struct result) { \
 		.state = ANALYZE_SKIP \
 	}
 
-#define FAIL                    \
-	(struct result) {           \
+#define FAIL \
+	(struct result) { \
 		.state = ANALYZE_FAILED \
 	}
 
-#define POSTPONE                  \
-	(struct result) {             \
+#define POSTPONE \
+	(struct result) { \
 		.state = ANALYZE_POSTPONE \
 	}
 
-#define WAIT(N)                                   \
-	(struct result) {                             \
+#define WAIT(N) \
+	(struct result) { \
 		.state = ANALYZE_WAIT, .waiting_for = (N) \
 	}
 
@@ -60,10 +60,10 @@
 #undef GEN_INSTR_SIZEOF
 
 // Sets is_naked flag to 'v' if '_instr' is valid compound expression.
-#define set_compound_naked(_instr, v)                          \
-	if ((_instr) && (_instr)->kind == MIR_INSTR_COMPOUND) {    \
+#define set_compound_naked(_instr, v) \
+	if ((_instr) && (_instr)->kind == MIR_INSTR_COMPOUND) { \
 		((struct mir_instr_compound *)(_instr))->is_naked = v; \
-	}                                                          \
+	} \
 	(void)0
 
 #define INVALID_COMPOUND_TYPE_INFER_MESSAGE "Unknown compound expression type. In case the compound expression is untyped, the type must" \
@@ -72,7 +72,6 @@
 #define INVALID_ENUM_TYPE_INFER_MESSAGE "Unknown enum expression type. Unable to infer enum type from the usage."
 
 typedef sarr_t(LLVMTypeRef, 8) llvm_types_t;
-typedef sarr_t(struct ast *, 16) defer_stack_t;
 
 static batomic_s64 _instr_id_counter = 1;
 
@@ -91,27 +90,12 @@ struct context {
 	struct arena              *small_array_arena;
 
 	// Ast -> MIR generation
-	struct {
-		struct mir_instr_block *current_block;
-		struct mir_instr_block *break_block;
-		struct mir_instr_block *continue_block;
-		struct mir_instr       *current_fwd_struct_decl;
-		struct mir_instr_call  *current_catched_call;
-
-		array(defer_stack_t) defer_stack;
-		s32 current_defer_stack_index;
-
-		// True in case the current generation is done in context of function recipe generation.
-		// This may affect compile-time argument types.
-		bool is_inside_recipe;
-		bool is_inside_fn_declaration;
-	} ast;
+	struct mir_codegen *codegen;
 
 	struct {
 		struct mir_instr_call *call;
 		mir_types_t            replacement_queue;
 		s32                    replacement_queue_index;
-		hash_t                 current_scope_layer;
 		bool                   is_generation_active;
 	} fn_generate;
 };
@@ -155,6 +139,8 @@ static void fn_dtor(struct mir_fn *fn) {
 	bmagic_assert(fn);
 	if (fn->dyncall.extern_callback_handle) dcbFreeCallback(fn->dyncall.extern_callback_handle);
 	arrfree(fn->variables);
+	tbl_free(fn->phi_block_mapping);
+	sarrfree(&fn->defer_stack);
 }
 
 static void fn_poly_dtor(struct mir_fn_generated_recipe *recipe) {
@@ -163,6 +149,8 @@ static void fn_poly_dtor(struct mir_fn_generated_recipe *recipe) {
 }
 
 // FW decls
+void mir_writer_run(struct assembly *assembly);
+
 static void            report_poly(struct mir_instr *instr);
 static void            report_invalid_call_argument_count(struct context *ctx, struct ast *node, usize expected, usize got);
 static void            testing_add_test_case(struct context *ctx, struct mir_fn *fn);
@@ -195,6 +183,9 @@ static struct id *lookup_builtins_error(struct context *ctx);
 // Lookup member in composite structure type. Searching also in base types. When 'out_base_type' is
 // set to base member type if entry was found in parent.
 static struct scope_entry *lookup_composit_member(struct context *ctx, struct mir_type *type, struct id *rid, struct mir_type **out_base_type);
+
+static struct mir_codegen *duplicate_codegen(struct context *ctx, struct mir_codegen *orig);
+static struct mir_codegen *swap_current_codegen(struct context *ctx, struct mir_codegen *codegen);
 
 // Create new type. The 'user_id' is optional.
 static struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id);
@@ -358,11 +349,12 @@ static struct mir_arg *_create_arg(struct context *ctx, create_arg_args_t *args)
 
 static struct mir_variant *create_variant(struct context *ctx, struct id *id, struct mir_type *value_type, const u64 value);
 // Create block without owner function.
-static struct mir_instr_block *create_block(struct context *ctx, const str_t name);
+static struct mir_instr_block *create_block(struct context *ctx, struct ast *node, const str_t name);
 // Create and append block into function specified.
-static struct mir_instr_block *append_block(struct context *ctx, struct mir_fn *fn, const str_t name, const bool is_unreachable);
+static struct mir_instr_block *append_block(struct context *ctx, struct ast *node, struct mir_fn *fn, const str_t name, const bool is_unreachable);
 // Append already created block into function. Block cannot be already member of other function.
 static struct mir_instr_block *append_global_block(struct context *ctx, const str_t name);
+static struct mir_instr_block *set_block_insertion_cursor(struct mir_instr_block *block);
 
 // instructions
 static void             *create_instr(struct context *ctx, enum mir_instr_kind kind, struct ast *node);
@@ -405,6 +397,8 @@ typedef struct
 } create_instr_call_args_t, append_instr_call_args_t;
 static struct mir_instr *_create_instr_call(struct context *ctx, create_instr_call_args_t *args);
 #define create_instr_call(ctx, ...) _create_instr_call((ctx), &(create_instr_call_args_t){__VA_ARGS__})
+
+static struct mir_instr *create_instr_defer_insert(struct context *ctx, struct ast *node, bool whole_tree);
 
 static struct mir_instr *insert_instr_load(struct context *ctx, struct mir_instr *src);
 static struct mir_instr *insert_instr_cast(struct context *ctx, struct mir_instr *src, struct mir_type *to_type);
@@ -557,6 +551,9 @@ static struct mir_instr *append_instr_unop(struct context *ctx, struct ast *node
 static struct mir_instr *append_instr_unreachable(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_debugbreak(struct context *ctx, struct ast *node);
 static struct mir_instr *append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src);
+static struct mir_instr *append_instr_cond_insert(struct context *ctx, struct ast *node, struct mir_instr *cond, struct ast *then_block, struct ast *else_block);
+static struct mir_instr *append_instr_defer(struct context *ctx, struct ast *node, struct ast *code);
+static struct mir_instr *append_instr_defer_insert(struct context *ctx, struct ast *node, bool whole_tree);
 
 // This will erase whole instruction tree of instruction with ref_count == 0. When force is set
 // ref_count is ignored.
@@ -568,18 +565,14 @@ static struct mir_instr_block *ast_initializer_block_begin(struct context *ctx, 
 static void                    ast_initializer_block_end(struct context *ctx, struct mir_instr_block *prev_block);
 static struct mir_instr       *ast_create_type_resolver_call(struct context *ctx, struct ast *ast_type);
 static struct mir_instr       *ast_create_expr_resolver_call(struct context *ctx, str_t fn_name, struct mir_type *fn_type, struct ast *ast_expr);
-static void                    ast_push_defer_stack(struct context *ctx);
-static void                    ast_pop_defer_stack(struct context *ctx);
-static void                    ast_free_defer_stack(struct context *ctx);
 static struct mir_instr       *ast(struct context *ctx, struct ast *node);
 static void                    ast_ublock(struct context *ctx, struct ast *ublock);
 static void                    ast_unreachable(struct context *ctx, struct ast *unr);
 static void                    ast_debugbreak(struct context *ctx, struct ast *debug_break);
-static void                    ast_defer_block(struct context *ctx, struct scope *block_owner_scope, bool whole_branch);
 static void                    ast_block(struct context *ctx, struct ast *block);
 static struct mir_instr       *ast_stmt_if(struct context *ctx, struct ast *stmt_if);
 static void                    ast_stmt_return(struct context *ctx, struct ast *ret);
-static void                    ast_stmt_defer(struct context *ctx, struct ast *defer);
+static struct mir_instr       *ast_stmt_defer(struct context *ctx, struct ast *defer);
 static void                    ast_stmt_loop(struct context *ctx, struct ast *loop);
 static void                    ast_stmt_break(struct context *ctx, struct ast *br);
 static void                    ast_stmt_continue(struct context *ctx, struct ast *cont);
@@ -730,6 +723,7 @@ static struct result analyze_instr_elem_ptr(struct context *ctx, struct mir_inst
 static struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_member_ptr *member_ptr);
 static struct result analyze_instr_addrof(struct context *ctx, struct mir_instr_addrof *addrof);
 static struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *block);
+static void          analyze_instr_block_finalize(struct context *ctx, struct mir_instr_block *block);
 static struct result analyze_instr_ret(struct context *ctx, struct mir_instr_ret *ret);
 static struct result analyze_instr_arg(struct context *ctx, struct mir_instr_arg *arg);
 static struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop);
@@ -770,6 +764,9 @@ static struct result analyze_instr_alignof(struct context *ctx, struct mir_instr
 static struct result analyze_instr_binop(struct context *ctx, struct mir_instr_binop *binop);
 static struct result analyze_instr_call_loc(struct context *ctx, struct mir_instr_call_loc *loc);
 static struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg);
+static struct result analyze_instr_cond_insert(struct context *ctx, struct mir_instr_cond_insert *cond_insert);
+static struct result analyze_instr_defer(struct context *ctx, struct mir_instr_defer *defer);
+static struct result analyze_instr_defer_insert(struct context *ctx, struct mir_instr_defer_insert *defer_insert);
 static void          analyze_report_unresolved(struct context *ctx);
 static void          analyze_report_unused(struct context *ctx);
 static void          analyze_report_skipped(struct context *ctx);
@@ -871,12 +868,12 @@ static inline void usage_check_push(struct context *ctx, struct scope_entry *ent
 
 	switch (entry->kind) {
 	case SCOPE_ENTRY_FN:
-		if (isflag(entry->data.fn->flags, FLAG_TEST_FN)) return;
-		if (isflag(entry->data.fn->flags, FLAG_MAYBE_UNUSED)) return;
-		if (entry->data.fn->generation_recipe) return;
+		if (isflag(entry->as.fn->flags, FLAG_TEST_FN)) return;
+		if (isflag(entry->as.fn->flags, FLAG_MAYBE_UNUSED)) return;
+		if (entry->as.fn->generation_recipe) return;
 		break;
 	case SCOPE_ENTRY_VAR:
-		if (isflag(entry->data.var->flags, FLAG_MAYBE_UNUSED)) return;
+		if (isflag(entry->as.var->flags, FLAG_MAYBE_UNUSED)) return;
 		break;
 	default:
 		return;
@@ -1171,16 +1168,17 @@ static inline bool can_impl_cast(const struct mir_type *from, const struct mir_t
 }
 
 static inline struct mir_instr_block *ast_current_block(struct context *ctx) {
-	return ctx->ast.current_block;
+	return ctx->codegen->current_block;
 }
 
 static inline struct mir_fn *ast_current_fn(struct context *ctx) {
-	return ctx->ast.current_block ? ctx->ast.current_block->owner_fn : NULL;
+	return ctx->codegen->current_block ? ctx->codegen->current_block->owner_fn : NULL;
 }
 
 static inline void terminate_block(struct mir_instr_block *block, struct mir_instr *terminator) {
 	bassert(block);
-	if (block->terminal) babort("basic block '" STR_FMT "' already terminated!", STR_ARG(block->name));
+	bassert(terminator);
+	bassert(!block->terminal && "Block is already terminated!");
 	block->terminal = terminator;
 }
 
@@ -1190,6 +1188,10 @@ static inline bool is_block_terminated(struct mir_instr_block *block) {
 
 static inline bool is_current_block_terminated(struct context *ctx) {
 	return ast_current_block(ctx)->terminal;
+}
+
+static inline bool is_last_instr_in_block(struct mir_instr *instr) {
+	return instr->owner_block && instr->owner_block->last_instr == instr;
 }
 
 // Mutate instruction to a new kind, keeps the base, but zero init destination kind related part.
@@ -1240,6 +1242,8 @@ static inline void erase_instr(struct mir_instr *instr) {
 	if (instr->owner_block) {
 		struct mir_instr_block *block = instr->owner_block;
 		if (block->entry_instr == instr) block->entry_instr = instr->next;
+		if (block->last_instr == instr) block->last_instr = instr->prev;
+		if (block->terminal == instr) block->terminal = NULL;
 	}
 	if (instr->prev) instr->prev->next = instr->next;
 	if (instr->next) instr->next->prev = instr->prev;
@@ -1333,8 +1337,8 @@ static inline void push_into_gscope(struct context *ctx, struct mir_instr *instr
 
 static inline void add_phi_income(struct mir_instr_phi *phi, struct mir_instr *value, struct mir_instr_block *block) {
 	bassert(value && block);
-	const int index = phi->num;
-	bassert(index < static_arrlenu(phi->incoming_values));
+	const s32 index = phi->num;
+	bassert(index < (s32)static_arrlenu(phi->incoming_values));
 
 	bassert(phi->incoming_values[index] == NULL);
 	bassert(phi->incoming_blocks[index] == NULL);
@@ -1406,7 +1410,74 @@ static enum builtin_id_kind get_builtin_kind(struct ast *ident) {
 }
 
 static inline void set_current_block(struct context *ctx, struct mir_instr_block *block) {
-	ctx->ast.current_block = block;
+	if (block && block->owner_fn) set_block_insertion_cursor(block);
+	ctx->codegen->current_block = block;
+}
+
+struct mir_insertion_context {
+	struct mir_instr_block *start_block;
+	struct mir_instr       *terminator;
+	struct mir_instr       *continue_instr;
+	struct mir_codegen     *prev_codegen;
+};
+
+static inline void insertion_begin(struct context *ctx, struct mir_insertion_context *ictx, struct mir_instr *after_instr, struct mir_codegen *codegen) {
+	bassert(codegen);
+
+	// Swap generation context to pretend we're in original context.
+	ictx->prev_codegen = swap_current_codegen(ctx, codegen);
+	ictx->start_block  = ast_current_block(ctx);
+	bassert(ictx->start_block == after_instr->owner_block && "Starting instruction is supposed to live in the same block as provided in codegen.");
+
+	ictx->terminator = ictx->start_block->terminal;
+	// Erase previous terminator so newly added instruction does not land in .unreachable block.
+	erase_instr(ictx->terminator);
+
+	ictx->continue_instr = after_instr->next;
+
+	// Reset start block for append of new instructions. Note this might be in the middle.
+	// Thus we need to store original terminator, and continue instruction, these will be added back
+	// after insertion is done.
+	ictx->start_block->terminal   = NULL;
+	ictx->start_block->last_instr = after_instr;
+}
+
+static inline void insertion_end(struct context *ctx, struct mir_insertion_context *ictx) {
+	while (ictx->continue_instr) {
+		// @Node 2026-01-26: Defer insert instruction might land in .unreachable block, this will produce false-positive
+		//                   warnings even if there is no actual unreachable code following this instruction. Thus we
+		//                   skip it here in case the current block is terminated -> unreachable block will be created on
+		//                   `append_current_block` call.
+		if (ictx->continue_instr->kind == MIR_INSTR_DEFER_INSERT && is_block_terminated(ictx->continue_instr->owner_block)) {
+			ictx->continue_instr = ictx->continue_instr->next;
+			erase_instr(ictx->continue_instr);
+			continue;
+		}
+		append_current_block(ctx, ictx->continue_instr);
+		ictx->continue_instr = ictx->continue_instr->next;
+	}
+
+	struct mir_instr_block *end_block = ast_current_block(ctx);
+	if (!is_block_terminated(end_block) && ictx->terminator) {
+		append_current_block(ctx, ictx->terminator);
+		terminate_block(end_block, ictx->terminator);
+	}
+
+	// @Note 2026-01-27: This mapping is needed due to phi instruction, since we can insert any arbitrary code,
+	//                   we might end up with different block structure after insertion. Thus any phi instruction
+	//                   after insertion must adjust income blocks.
+	if (ictx->start_block != end_block) {
+		struct mir_fn *fn    = ictx->start_block->owner_fn;
+		const s32      index = tbl_lookup_index(fn->phi_block_mapping, ictx->start_block);
+		if (index == -1) {
+			struct block_entry entry = {.hash = ictx->start_block, .value = end_block};
+			tbl_insert(fn->phi_block_mapping, entry);
+		} else {
+			fn->phi_block_mapping[index].value = end_block;
+		}
+	}
+
+	swap_current_codegen(ctx, ictx->prev_codegen);
 }
 
 static inline void error_types(struct context *ctx, struct mir_type *from, struct mir_type *to, struct ast *node, const char *msg) {
@@ -1424,9 +1495,9 @@ static inline void commit_fn(struct context *ctx, struct mir_fn *fn) {
 	bassert(id);
 	struct scope_entry *entry = fn->scope_entry;
 	bmagic_assert(entry);
-	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
-	entry->kind    = SCOPE_ENTRY_FN;
-	entry->data.fn = fn;
+	bassert(entry->kind == SCOPE_ENTRY_INCOMPLETE);
+	entry->kind  = SCOPE_ENTRY_FN;
+	entry->as.fn = fn;
 	analyze_notify_provided(ctx, id->hash);
 	usage_check_push(ctx, entry);
 }
@@ -1434,31 +1505,39 @@ static inline void commit_fn(struct context *ctx, struct mir_fn *fn) {
 static inline void commit_variant(struct context UNUSED(*ctx), struct mir_variant *variant) {
 	struct scope_entry *entry = variant->entry;
 	bmagic_assert(entry);
-	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
-	entry->kind         = SCOPE_ENTRY_VARIANT;
-	entry->data.variant = variant;
+	bassert(entry->kind == SCOPE_ENTRY_INCOMPLETE);
+	entry->kind       = SCOPE_ENTRY_VARIANT;
+	entry->as.variant = variant;
 }
 
 static inline void commit_member(struct context UNUSED(*ctx), struct mir_member *member) {
 	struct scope_entry *entry = member->entry;
 	bmagic_assert(entry);
+
 	// Do not commit void entries
 	if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
-	entry->kind        = SCOPE_ENTRY_MEMBER;
-	entry->data.member = member;
+	bassert(entry->kind == SCOPE_ENTRY_INCOMPLETE);
+
+	entry->kind      = SCOPE_ENTRY_MEMBER;
+	entry->as.member = member;
 }
 
 static inline void commit_var(struct context *ctx, struct mir_var *var, const bool check_usage) {
-	struct id *id = var->id;
-	bassert(id);
+	struct id          *id    = var->id;
 	struct scope_entry *entry = var->entry;
+	bassert(id);
 	bmagic_assert(entry);
+
 	// Do not commit void entries
 	if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
-	entry->kind     = SCOPE_ENTRY_VAR;
-	entry->data.var = var;
+	// @Note 2026-01-26: Struct generation usually goes in two steps, we firstly generate incomplete type which
+	//                   is completed later. Both must be commited but we don't wan't to have them twice in
+	//                   usage-check array.
+	if (check_usage && entry->kind == SCOPE_ENTRY_INCOMPLETE) usage_check_push(ctx, entry);
+
+	entry->kind   = SCOPE_ENTRY_VAR;
+	entry->as.var = var;
 	if (isflag(var->iflags, MIR_VAR_GLOBAL) || var->value.is_comptime) analyze_notify_provided(ctx, id->hash);
-	if (check_usage) usage_check_push(ctx, entry);
 }
 
 // Provide builtin type. Register & commit.
@@ -1467,26 +1546,28 @@ static inline void provide_builtin_type(struct context *ctx, struct mir_type *ty
 
 	if (!entry) return;
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
-	entry->kind      = SCOPE_ENTRY_TYPE;
-	entry->data.type = type;
+	entry->kind    = SCOPE_ENTRY_TYPE;
+	entry->as.type = type;
 }
 
-static inline void provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member) {
+static inline void provide_builtin_member(struct context *ctx, struct scope *scope, struct mir_member *member, bool commit) {
 	struct scope_entry *entry = register_symbol(ctx, NULL, member->id, scope, true);
 	if (!entry) return;
+
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
-	entry->kind        = SCOPE_ENTRY_MEMBER;
-	entry->data.member = member;
-	member->entry      = entry;
+	member->entry = entry;
+
+	if (!commit) return;
+	commit_member(ctx, member);
 }
 
 static inline void provide_builtin_variant(struct context *ctx, struct scope *scope, struct mir_variant *variant) {
 	struct scope_entry *entry = register_symbol(ctx, NULL, variant->id, scope, true);
 	if (!entry) return;
 	bassert(entry->kind != SCOPE_ENTRY_UNNAMED);
-	entry->kind         = SCOPE_ENTRY_VARIANT;
-	entry->data.variant = variant;
-	variant->entry      = entry;
+	entry->kind       = SCOPE_ENTRY_VARIANT;
+	entry->as.variant = variant;
+	variant->entry    = entry;
 }
 
 static inline bool is_load_needed(const struct mir_instr *instr) {
@@ -1550,31 +1631,26 @@ static inline bool is_to_any_needed(struct context *ctx, struct mir_instr *src, 
 	return src_type != any_type;
 }
 
-void ast_push_defer_stack(struct context *ctx) {
-	if (++ctx->ast.current_defer_stack_index == arrlen(ctx->ast.defer_stack)) {
-		arrput(ctx->ast.defer_stack, (defer_stack_t){0});
-	}
-}
-
-void ast_pop_defer_stack(struct context *ctx) {
-	bassert(ctx->ast.current_defer_stack_index >= 0);
-	sarrclear(&ctx->ast.defer_stack[ctx->ast.current_defer_stack_index]);
-	ctx->ast.current_defer_stack_index--;
-}
-
-void ast_free_defer_stack(struct context *ctx) {
-	for (usize i = 0; i < arrlenu(ctx->ast.defer_stack); ++i) {
-		sarrfree(&ctx->ast.defer_stack[i]);
-	}
-	arrfree(ctx->ast.defer_stack);
-}
-
 struct mir_type *create_type(struct context *ctx, enum mir_type_kind kind, struct id *user_id) {
 	struct mir_type *type = arena_alloc(&ctx->mir_arenas->type);
 	bmagic_set(type);
 	type->kind    = kind;
 	type->user_id = user_id;
 	return type;
+}
+
+struct mir_codegen *duplicate_codegen(struct context *ctx, struct mir_codegen *orig) {
+	struct mir_codegen *codegen = arena_alloc(&ctx->mir_arenas->codegen);
+	if (!orig) return codegen;
+	memcpy(codegen, orig, sizeof(*codegen));
+	return codegen;
+}
+
+struct mir_codegen *swap_current_codegen(struct context *ctx, struct mir_codegen *codegen) {
+	bassert(codegen);
+	struct mir_codegen *tmp = ctx->codegen;
+	ctx->codegen            = codegen;
+	return tmp;
 }
 
 struct scope_entry *register_symbol(struct context *ctx, struct ast *node, struct id *id, struct scope *scope, bool is_builtin) {
@@ -1588,10 +1664,10 @@ struct scope_entry *register_symbol(struct context *ctx, struct ast *node, struc
 	}
 
 	scope_lock(scope);
-	const hash_t layer_index = ctx->fn_generate.current_scope_layer;
+	const hash_t scope_layer = ctx->codegen->current_scope_layer;
 
 	scope_lookup_args_t lookup_args = {
-	    .layer = layer_index,
+	    .layer = scope_layer,
 	    .id    = id,
 	};
 
@@ -1617,8 +1693,8 @@ struct scope_entry *register_symbol(struct context *ctx, struct ast *node, struc
 	}
 
 	// no collision
-	struct scope_entry *entry = scope_create_entry(ctx->scope_thread_local, SCOPE_ENTRY_INCOMPLETE, id, node, is_builtin);
-	scope_insert(scope, layer_index, entry);
+	struct scope_entry *entry = scope_create_entry(ctx->scope_thread_local, .id = id, .node = node, .is_builtin = is_builtin);
+	scope_insert(scope, scope_layer, entry);
 
 	scope_unlock(scope);
 	return_zone(entry);
@@ -1646,7 +1722,7 @@ struct mir_type *lookup_builtin_type(struct context *ctx, enum builtin_id_kind k
 	}
 
 	bassert(found->kind == SCOPE_ENTRY_VAR);
-	struct mir_var *var = found->data.var;
+	struct mir_var *var = found->as.var;
 	bassert(var && var->value.is_comptime && var->value.type->kind == MIR_TYPE_TYPE);
 	struct mir_type *var_type = MIR_CEV_READ_AS(struct mir_type *, &var->value);
 	bmagic_assert(var_type);
@@ -1681,20 +1757,19 @@ struct mir_fn *lookup_builtin_fn(struct context *ctx, enum builtin_id_kind kind)
 	}
 
 	bassert(found->kind == SCOPE_ENTRY_FN);
-	ref_instr(found->data.fn->prototype);
-	return found->data.fn;
+	ref_instr(found->as.fn->prototype);
+	return found->as.fn;
 }
 
 struct id *lookup_builtins_rtti(struct context *ctx) {
-#define LOOKUP_TYPE(N, K)                                              \
-	if (!bt->t_Type##N) {                                              \
+#define LOOKUP_TYPE(N, K) \
+	if (!bt->t_Type##N) { \
 		bt->t_Type##N = lookup_builtin_type(ctx, BUILTIN_ID_TYPE_##K); \
-		if (!bt->t_Type##N) {                                          \
-			return &builtin_ids[BUILTIN_ID_TYPE_##K];                  \
-		}                                                              \
-	}                                                                  \
+		if (!bt->t_Type##N) { \
+			return &builtin_ids[BUILTIN_ID_TYPE_##K]; \
+		} \
+	} \
 	(void)0
-
 	if (ctx->builtin_types->is_rtti_ready) return NULL;
 	struct builtin_types *bt = ctx->builtin_types;
 
@@ -2306,7 +2381,7 @@ struct mir_type *create_type_slice(struct context *ctx, enum mir_type_kind kind,
 	tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, len_type);
 
 	sarrput(members, tmp);
-	provide_builtin_member(ctx, body_scope, tmp);
+	provide_builtin_member(ctx, body_scope, tmp, true);
 
 	tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
@@ -2315,7 +2390,8 @@ struct mir_type *create_type_slice(struct context *ctx, enum mir_type_kind kind,
 	id.str  = scdup2(ctx->string_cache, name);
 
 	sarrput(members, tmp);
-	provide_builtin_member(ctx, body_scope, tmp);
+	provide_builtin_member(ctx, body_scope, tmp, true);
+
 	result = create_type_struct(ctx,
 	                            .kind              = kind,
 	                            .user_id           = user_id,
@@ -2381,28 +2457,28 @@ struct mir_type *create_type_struct_dynarr(struct context *ctx, enum mir_type_ki
 		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_LEN], 0, len_type);
 
 		sarrput(members, tmp);
-		provide_builtin_member(ctx, body_scope, tmp);
+		provide_builtin_member(ctx, body_scope, tmp, true);
 	}
 
 	{ // .ptr
 		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_PTR], 1, elem_ptr_type);
 
 		sarrput(members, tmp);
-		provide_builtin_member(ctx, body_scope, tmp);
+		provide_builtin_member(ctx, body_scope, tmp, true);
 	}
 
 	{ // .allocated
 		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATED_ELEMS], 2, allocated_type);
 
 		sarrput(members, tmp);
-		provide_builtin_member(ctx, body_scope, tmp);
+		provide_builtin_member(ctx, body_scope, tmp, true);
 	}
 
 	{ // .allocator
 		tmp = create_member(ctx, NULL, &builtin_ids[BUILTIN_ID_ARR_ALLOCATOR], 3, allocator_type);
 
 		sarrput(members, tmp);
-		provide_builtin_member(ctx, body_scope, tmp);
+		provide_builtin_member(ctx, body_scope, tmp, true);
 	}
 
 	struct id id;
@@ -2936,11 +3012,16 @@ void append_current_block(struct context *ctx, struct mir_instr *instr) {
 
 	bool report_unreachable = false;
 	if (is_block_terminated(block)) {
-		block = append_block(ctx, block->owner_fn, cstr(".unreachable"), true);
+		block = append_block(ctx, NULL, block->owner_fn, cstr(".unreachable"), true);
 		set_current_block(ctx, block);
 		append_instr_unreachable(ctx, instr->node);
 		report_unreachable = true;
 	}
+
+	// @Note 2026-01-26: We allow reinsertion of erased instructions, this is kinda handy in cases
+	//                   where we need to remove the instruction just temporarily and then append it back.
+	bassert(instr->state == MIR_IS_PENDING || instr->state == MIR_IS_ERASED);
+	instr->state = MIR_IS_PENDING;
 
 	instr->owner_block = block;
 	instr->prev        = block->last_instr;
@@ -3243,31 +3324,49 @@ struct mir_instr *create_instr_call_loc(struct context *ctx, struct ast *node, s
 	return &tmp->base;
 }
 
-struct mir_instr_block *create_block(struct context *ctx, const str_t name) {
+struct mir_instr_block *create_block(struct context *ctx, struct ast *node, const str_t name) {
 	bassert(name.len);
-	struct mir_instr_block *tmp = create_instr(ctx, MIR_INSTR_BLOCK, NULL);
+	struct mir_instr_block *tmp = create_instr(ctx, MIR_INSTR_BLOCK, node);
 	tmp->base.value.type        = ctx->builtin_types->t_void;
 	tmp->name                   = name;
 	tmp->owner_fn               = NULL;
 	return tmp;
 }
 
-struct mir_instr_block *append_block(struct context *ctx, struct mir_fn *fn, const str_t name, const bool is_unreachable) {
+struct mir_instr_block *append_block(struct context *ctx, struct ast *node, struct mir_fn *fn, const str_t name, const bool is_unreachable) {
 	bassert(fn);
-	struct mir_instr_block *block = create_block(ctx, name);
+
+	struct mir_instr_block *block = create_block(ctx, node, name);
 	block->owner_fn               = fn;
 	block->is_unreachable         = is_unreachable;
-	if (!fn->first_block) {
-		fn->first_block = block;
+
+	if (!fn->insertion_cursor_block) {
+		bassert(!fn->entry_block && "Function entry block already set!");
+		fn->entry_block = block;
 		// first block is referenced every time!!!
-		ref_instr(&block->base);
+		ref_instr(&fn->entry_block->base);
+		goto DONE;
 	}
 
-	block->base.prev = &fn->last_block->base;
-	if (fn->last_block) fn->last_block->base.next = &block->base;
-	fn->last_block = block;
+	block->base.prev = &fn->insertion_cursor_block->base;
+	block->base.next = fn->insertion_cursor_block->base.next;
+	if (fn->insertion_cursor_block->base.next) {
+		fn->insertion_cursor_block->base.next->prev = &block->base;
+	}
+	fn->insertion_cursor_block->base.next = &block->base;
 
+DONE:
+	fn->insertion_cursor_block = block;
 	return block;
+}
+
+// Sets global block cursor so any new blocks are created after 'block'.
+struct mir_instr_block *set_block_insertion_cursor(struct mir_instr_block *block) {
+	bassert(block);
+	bassert(block->owner_fn && "Block without owner function cannot be used as an insertion cursor.");
+	struct mir_instr_block *prev_insertion_cursor_block = block->owner_fn->insertion_cursor_block;
+	block->owner_fn->insertion_cursor_block             = block;
+	return prev_insertion_cursor_block;
 }
 
 struct mir_instr_block *append_global_block(struct context *ctx, const str_t name) {
@@ -3496,6 +3595,17 @@ struct mir_instr *_create_instr_call(struct context *ctx, create_instr_call_args
 	return ref_instr(&tmp->base);
 }
 
+struct mir_instr *create_instr_defer_insert(struct context *ctx, struct ast *node, bool whole_tree) {
+	struct mir_instr_defer_insert *tmp = create_instr(ctx, MIR_INSTR_DEFER_INSERT, node);
+	tmp->base.ref_count                = 0; // @Note 2026-01-18: Removed everytime after analyze.
+	tmp->base.value.type               = ctx->builtin_types->t_void;
+	tmp->base.value.addr_mode          = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime        = true;
+	tmp->whole_tree                    = whole_tree;
+	tmp->codegen                       = duplicate_codegen(ctx, ctx->codegen);
+	return &tmp->base;
+}
+
 struct mir_instr *append_instr_compound(struct context *ctx, struct ast *node, struct mir_instr *type, mir_instrs_t *values, bool is_multiple_return_value) {
 	struct mir_instr *tmp = create_instr_compound(ctx, node, type, values, is_multiple_return_value);
 	append_current_block(ctx, tmp);
@@ -3647,8 +3757,7 @@ struct mir_instr *append_instr_test_cases(struct context *ctx, struct ast *node)
 	return tmp;
 }
 
-struct mir_instr *
-append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *cond, struct mir_instr_block *then_block, struct mir_instr_block *else_block, const bool is_static) {
+struct mir_instr *append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *cond, struct mir_instr_block *then_block, struct mir_instr_block *else_block, const bool is_static) {
 	bassert(cond && then_block && else_block);
 	ref_instr(&then_block->base);
 	ref_instr(&else_block->base);
@@ -3658,7 +3767,6 @@ append_instr_cond_br(struct context *ctx, struct ast *node, struct mir_instr *co
 	tmp->cond                     = ref_instr(cond);
 	tmp->then_block               = then_block;
 	tmp->else_block               = else_block;
-	tmp->is_static                = is_static;
 	append_current_block(ctx, &tmp->base);
 	struct mir_instr_block *block = ast_current_block(ctx);
 	if (!is_block_terminated(block)) terminate_block(block, &tmp->base);
@@ -3743,6 +3851,41 @@ struct mir_instr *append_instr_load(struct context *ctx, struct ast *node, struc
 
 struct mir_instr *append_instr_addrof(struct context *ctx, struct ast *node, struct mir_instr *src) {
 	struct mir_instr *tmp = create_instr_addrof(ctx, node, src);
+	append_current_block(ctx, tmp);
+	return tmp;
+}
+
+struct mir_instr *append_instr_cond_insert(struct context *ctx, struct ast *node, struct mir_instr *cond, struct ast *then_block, struct ast *else_block) {
+	bassert(then_block); // @Note 2026-01-17: Else block is optional.
+	struct mir_instr_cond_insert *tmp = create_instr(ctx, MIR_INSTR_COND_INSERT, node);
+	tmp->base.ref_count               = 0; // @Note 2026-01-18: Removed everytime after analyze.
+	tmp->base.value.type              = ctx->builtin_types->t_void;
+	tmp->base.value.addr_mode         = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime       = true;
+	tmp->cond                         = ref_instr(cond);
+	tmp->then_block                   = then_block;
+	tmp->else_block                   = else_block;
+	tmp->codegen                      = duplicate_codegen(ctx, ctx->codegen);
+
+	append_current_block(ctx, &tmp->base);
+	return &tmp->base;
+}
+
+struct mir_instr *append_instr_defer(struct context *ctx, struct ast *node, struct ast *code) {
+	bassert(code);
+	struct mir_instr_defer *tmp = create_instr(ctx, MIR_INSTR_DEFER, node);
+	tmp->base.ref_count         = 0; // @Note 2026-01-18: Removed everytime after analyze.
+	tmp->base.value.type        = ctx->builtin_types->t_void;
+	tmp->base.value.addr_mode   = MIR_VAM_RVALUE;
+	tmp->base.value.is_comptime = true;
+	tmp->code                   = code;
+
+	append_current_block(ctx, &tmp->base);
+	return &tmp->base;
+}
+
+struct mir_instr *append_instr_defer_insert(struct context *ctx, struct ast *node, bool whole_tree) {
+	struct mir_instr *tmp = create_instr_defer_insert(ctx, node, whole_tree);
 	append_current_block(ctx, tmp);
 	return tmp;
 }
@@ -4108,11 +4251,10 @@ struct mir_instr *append_instr_call_loc(struct context *ctx, struct ast *node) {
 
 // analyze
 void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force) {
-#define erase(i)                              \
+#define erase(i) \
 	if ((i) && (i)->state != MIR_IS_ERASED) { \
-		sarrput(&queue, unref_instr((i)));    \
+		sarrput(&queue, unref_instr((i))); \
 	}
-
 	if (!instr) return;
 	instrs_t queue = SARR_ZERO;
 
@@ -4296,6 +4438,12 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force) {
 			break;
 		}
 
+		case MIR_INSTR_COND_INSERT: {
+			struct mir_instr_cond_insert *cond_insert = (struct mir_instr_cond_insert *)top;
+			erase(cond_insert->cond);
+			break;
+		}
+
 		case MIR_INSTR_BLOCK:
 			continue;
 
@@ -4310,6 +4458,8 @@ void erase_instr_tree(struct mir_instr *instr, bool keep_root, bool force) {
 		case MIR_INSTR_MSG:
 		case MIR_INSTR_UNROLL:
 		case MIR_INSTR_ARG:
+		case MIR_INSTR_DEFER:
+		case MIR_INSTR_DEFER_INSERT:
 			break;
 
 		case MIR_INSTR_FN_PROTO:
@@ -4521,7 +4671,6 @@ struct result analyze_instr_toany(struct context *ctx, struct mir_instr_to_any *
 
 static struct mir_instr_block *trace_comptime_execution(struct mir_instr_br *start_br, struct mir_instr_block *dst_block) {
 #define MAX_DEPTH 1024
-
 	bassert(start_br->base.kind == MIR_INSTR_BR);
 
 	struct mir_instr_block *block  = start_br->then_block;
@@ -4559,6 +4708,7 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi) 
 
 	struct mir_instr_block *phi_owner_block = phi->base.owner_block;
 	struct mir_instr       *origin_br       = phi->origin_br;
+	struct mir_fn          *fn              = phi_owner_block->owner_fn;
 
 	bassert(origin_br && (origin_br->kind == MIR_INSTR_COND_BR || origin_br->kind == MIR_INSTR_BR));
 
@@ -4568,12 +4718,24 @@ struct result analyze_instr_phi(struct context *ctx, struct mir_instr_phi *phi) 
 		bassert(result_block);
 	}
 
-	for (int i = 0; i < phi->num; ++i) {
+	for (s32 i = 0; i < phi->num; ++i) {
 		bassert(phi->incoming_values[i]);
 		bassert(phi->incoming_blocks[i]);
 		bassert(i == 0 || type);
 		const analyze_stage_fn_t *conf = i == 0 ? analyze_slot_conf_basic : analyze_slot_conf_default;
 		if (analyze_slot(ctx, conf, &phi->incoming_values[i], type) != ANALYZE_PASSED) return_zone(FAIL);
+
+		// @Node 2026-01-20: This complication was introduced by conditional compilatio (static if) where analyze
+		//                   pass might completely change block hierarchy in case static if is present in the function.
+		//                   We essentially have to override incoming block in case it changes.
+		//
+		//                   There might be better solution to this, however I tried to encapsulate inserted code into
+		//                   dedicated branch, but since the original block might get split in the middle the issue
+		//                   is still present.
+		const s32 index = tbl_lookup_index(fn->phi_block_mapping, phi->incoming_blocks[i]);
+		if (index != -1) {
+			phi->incoming_blocks[i] = fn->phi_block_mapping[index].value;
+		}
 
 		struct mir_instr       *value = phi->incoming_values[i];
 		struct mir_instr_block *block = phi->incoming_blocks[i];
@@ -4925,7 +5087,7 @@ static struct result analyze_instr_compound_regular(struct context *ctx, struct 
 					goto STRUCT_FAILED;
 				}
 				bassert(found->kind == SCOPE_ENTRY_MEMBER);
-				last_member_index = found->data.member->index;
+				last_member_index = found->as.member->index;
 				*value_ref        = designator->value;
 				erase_instr(&designator->base);
 				designator    = NULL;
@@ -5128,7 +5290,7 @@ struct result analyze_instr_set_initializer(struct context *ctx, struct mir_inst
 	var->value.type = type;
 	// Initializer value is guaranteed to be comptime so we just check variable mutability.
 	// (mutable variables cannot be comptime)
-	var->value.is_comptime = isnotflag(var->iflags, MIR_VAR_MUTABLE);
+	var->value.is_comptime = !isflag(var->iflags, MIR_VAR_MUTABLE);
 
 	// Disable thread locality for some types.
 	if (isflag(var->flags, FLAG_THREAD_LOCAL)) {
@@ -5326,7 +5488,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 		struct scope_entry *scope_entry = MIR_CEV_READ_AS(struct scope_entry *, &target_ptr->value);
 		bmagic_assert(scope_entry);
 		bassert(scope_entry->kind == SCOPE_ENTRY_NAMED_SCOPE && "Expected named scope.");
-		struct scope *scope = scope_entry->data.scope;
+		struct scope *scope = scope_entry->as.scope;
 		bmagic_assert(scope);
 		struct id   *rid         = &ast_member_ident->data.ident.id;
 		struct unit *parent_unit = ast_member_ident->location->unit;
@@ -5334,7 +5496,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 		bassert(parent_unit);
 		struct mir_instr_decl_ref *decl_ref = (struct mir_instr_decl_ref *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
 		decl_ref->scope                     = scope;
-		decl_ref->scope_layer               = ctx->fn_generate.current_scope_layer;
+		decl_ref->scope_layer               = ctx->codegen->current_scope_layer;
 		decl_ref->parent_unit               = parent_unit;
 		decl_ref->rid                       = rid;
 
@@ -5363,7 +5525,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 
 		struct mir_instr_decl_ref *decl_ref = (struct mir_instr_decl_ref *)mutate_instr(&member_ptr->base, MIR_INSTR_DECL_REF);
 		decl_ref->scope                     = scope;
-		decl_ref->scope_layer               = ctx->fn_generate.current_scope_layer;
+		decl_ref->scope_layer               = ctx->codegen->current_scope_layer;
 		decl_ref->parent_unit               = parent_unit;
 		decl_ref->rid                       = rid;
 
@@ -5451,7 +5613,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 			bassert(found->kind == SCOPE_ENTRY_VARIANT);
 
 			member_ptr->scope_entry            = found;
-			member_ptr->base.value.type        = found->data.variant->value_type;
+			member_ptr->base.value.type        = found->as.variant->value_type;
 			member_ptr->base.value.addr_mode   = target_addr_mode;
 			member_ptr->base.value.is_comptime = true;
 			return_zone(PASS);
@@ -5516,7 +5678,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 			}
 
 			bassert(found->kind == SCOPE_ENTRY_MEMBER);
-			bassert(found->data.member && found->data.member->type);
+			bassert(found->as.member && found->as.member->type);
 
 			// @Hack
 			member_ptr->scope_entry            = ctx->analyze->unnamed_entry;
@@ -5525,7 +5687,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 			member_ptr->base.value.type        = ctx->builtin_types->t_type;
 
 			// @Cleanup: This should be inside evaluator
-			MIR_CEV_WRITE_AS(struct mir_type *, &member_ptr->base.value, found->data.member->type);
+			MIR_CEV_WRITE_AS(struct mir_type *, &member_ptr->base.value, found->as.member->type);
 			return_zone(PASS);
 		}
 	}
@@ -5601,7 +5763,7 @@ struct result analyze_instr_member_ptr(struct context *ctx, struct mir_instr_mem
 		}
 
 		bassert(found->kind == SCOPE_ENTRY_MEMBER);
-		struct mir_member *member = found->data.member;
+		struct mir_member *member = found->as.member;
 
 		// setup member_ptr type
 		struct mir_type *member_ptr_type   = create_type_ptr(ctx, member->type);
@@ -5964,7 +6126,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	scope_entry_ref(found);
 	switch (found->kind) {
 	case SCOPE_ENTRY_FN: {
-		struct mir_fn *fn = found->data.fn;
+		struct mir_fn *fn = found->as.fn;
 		bassert(fn);
 		struct mir_type *type = fn->type;
 		bassert(type);
@@ -6007,7 +6169,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	}
 
 	case SCOPE_ENTRY_VARIANT: {
-		struct mir_variant *variant = found->data.variant;
+		struct mir_variant *variant = found->as.variant;
 		bassert(variant);
 		struct mir_type *type = variant->value_type;
 		bassert(type);
@@ -6019,9 +6181,9 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	}
 
 	case SCOPE_ENTRY_VAR: {
-		struct mir_var *var = found->data.var;
+		struct mir_var *var = found->as.var;
 		bassert(var);
-		if (var->value.is_comptime && isnotflag(var->iflags, MIR_VAR_ANALYZED)) {
+		if (var->value.is_comptime && !isflag(var->iflags, MIR_VAR_ANALYZED)) {
 			return_zone(POSTPONE);
 		}
 
@@ -6036,7 +6198,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 				bassert(t->user_id);
 				return_zone(WAIT(t->user_id->hash));
 			}
-		} else if (isnotflag(var->iflags, MIR_VAR_GLOBAL) && out_of_function) {
+		} else if (!isflag(var->iflags, MIR_VAR_GLOBAL) && out_of_function) {
 			// Here we must handle situation when we try to reference variables declared in parent
 			// functions of local functions. (We try to implicitly capture those variables and this
 			// leads to invalid LLVM IR.)
@@ -6055,7 +6217,7 @@ struct result analyze_instr_decl_ref(struct context *ctx, struct mir_instr_decl_
 	}
 
 	case SCOPE_ENTRY_ARG: {
-		struct mir_arg *arg = found->data.arg;
+		struct mir_arg *arg = found->as.arg;
 		bassert(arg);
 
 		struct mir_type *ref_type = arg->type;
@@ -6087,7 +6249,7 @@ struct result analyze_instr_decl_direct_ref(struct context *ctx, struct mir_inst
 		if (ref->ref->state != MIR_IS_COMPLETE) return_zone(POSTPONE);
 		struct mir_var *var = ((struct mir_instr_decl_var *)ref->ref)->var;
 		bassert(var);
-		if (var->value.is_comptime && isnotflag(var->iflags, MIR_VAR_ANALYZED)) {
+		if (var->value.is_comptime && !isflag(var->iflags, MIR_VAR_ANALYZED)) {
 			return_zone(POSTPONE);
 		}
 		++var->ref_count;
@@ -6222,7 +6384,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 
 	bassert(fn->type);
 
-	if (fn->type->data.fn.ret_type->kind == MIR_TYPE_TYPE && fn->decl_node && isnotflag(fn->flags, FLAG_COMPTIME)) {
+	if (fn->type->data.fn.ret_type->kind == MIR_TYPE_TYPE && fn->decl_node && !isflag(fn->flags, FLAG_COMPTIME)) {
 		// Check function return type, we use check for 'decl_node' here to exclude implicit
 		// type resolvers, probably better idea would be introduce something like 'is_implicit'
 		// flag for the 'mir_fn' but for now it's enough.
@@ -6327,7 +6489,7 @@ struct result analyze_instr_fn_proto(struct context *ctx, struct mir_instr_fn_pr
 		bassert(fn->generation_recipe && "Missing generation recipe.");
 	} else {
 		// Add entry block of the function into analyze queue.
-		struct mir_instr *entry_block = (struct mir_instr *)fn->first_block;
+		struct mir_instr *entry_block = (struct mir_instr *)fn->entry_block;
 		if (!entry_block) {
 			// INCOMPLETE: not the best place to do this check, move into struct ast
 			// generation later
@@ -6511,29 +6673,21 @@ struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_b
 	}
 
 	const bool is_condition_comptime = mir_is_comptime(br->cond);
-	if (br->is_static && !is_condition_comptime) {
-		report_error(EXPECTED_COMPTIME, br->cond->node, "Static if expression is supposed to be known in compile-time.");
-		return_zone(FAIL);
-	}
-
 	if (is_condition_comptime) {
 		// Comptime conditional break can be simplified into direct break instruction in case
 		// the expression is known in compile time. Dropped branch is kept for analyze but
 		// reference count is reduced. This can eventually lead to marking the branch as
 		// unreachable and produce compiler warning.
-		const bool              cond           = MIR_CEV_READ_AS(bool, &br->cond->value);
+		const bool cond = MIR_CEV_READ_AS(bool, &br->cond->value);
+
 		struct mir_instr_block *continue_block = cond ? br->then_block : br->else_block;
 		struct mir_instr_block *discard_block  = !cond ? br->then_block : br->else_block;
 
 		unref_instr(&discard_block->base);
 		unref_instr(br->cond);
 
+		// @Note 2026-01-17: Erase condition itself.
 		if (br->cond->ref_count == 0) erase_instr_tree(br->cond, false, false);
-		if (br->is_static && discard_block->base.ref_count == 0) {
-			// 2024-08-07 In case of static function we have to erase the block because,
-			// it might contain invalid code excluded from build.
-			erase_block(&discard_block->base);
-		}
 
 		struct mir_instr_br *tmp = mutate_instr(&br->base, MIR_INSTR_BR);
 		tmp->then_block          = continue_block;
@@ -6558,10 +6712,7 @@ struct result analyze_instr_switch(struct context *ctx, struct mir_instr_switch 
 	bassert(expected_case_type);
 
 	if (expected_case_type->kind != MIR_TYPE_INT && expected_case_type->kind != MIR_TYPE_ENUM) {
-		report_error(INVALID_TYPE,
-		             sw->value->node,
-		             "Invalid type of switch expression. Only integer types and "
-		             "enums can be used.");
+		report_error(INVALID_TYPE, sw->value->node, "Invalid type of switch expression. Only integer types and enums can be used.");
 		return_zone(FAIL);
 	}
 
@@ -6995,14 +7146,14 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
 		if (arg->default_value->kind == MIR_INSTR_DECL_VAR) {
 			struct mir_var *var = ((struct mir_instr_decl_var *)arg->default_value)->var;
 			bassert(var);
-			if (isnotflag(var->iflags, MIR_VAR_ANALYZED)) return_zone(POSTPONE);
+			if (!isflag(var->iflags, MIR_VAR_ANALYZED)) return_zone(POSTPONE);
 			arg->type = var->value.type;
 		} else {
 			arg->type = arg->default_value->value.type;
 		}
 	}
 	bassert(arg->type && "Invalid argument type!");
-	if (arg->type->kind == MIR_TYPE_TYPE && isnotflag(arg->flags, FLAG_COMPTIME)) {
+	if (arg->type->kind == MIR_TYPE_TYPE && !isflag(arg->flags, FLAG_COMPTIME)) {
 		report_error(INVALID_TYPE,
 		             decl->base.node,
 		             "Types can be passed only as comptime arguments into the functions. Use the '#comptime' directive for the argument '" STR_FMT "'.",
@@ -7021,8 +7172,8 @@ struct result analyze_instr_decl_arg(struct context *ctx, struct mir_instr_decl_
 		bassert(arg->entry == NULL);
 	} else {
 		bassert(arg->entry && "Missing scope entry for function argument.");
-		arg->entry->kind     = SCOPE_ENTRY_ARG;
-		arg->entry->data.arg = arg;
+		arg->entry->kind   = SCOPE_ENTRY_ARG;
+		arg->entry->as.arg = arg;
 	}
 
 	if (isflag(arg->flags, FLAG_COMPTIME) && arg->generation_call) {
@@ -7570,6 +7721,86 @@ struct result analyze_instr_msg(struct context *ctx, struct mir_instr_msg *msg) 
 	BL_UNREACHABLE;
 }
 
+struct result analyze_instr_cond_insert(struct context *ctx, struct mir_instr_cond_insert *cond_insert) {
+	zone();
+	bassert(cond_insert->cond && cond_insert->then_block);
+	bassert(cond_insert->cond->state == MIR_IS_COMPLETE);
+
+	if (analyze_slot(ctx, analyze_slot_conf_default, &cond_insert->cond, ctx->builtin_types->t_bool) != ANALYZE_PASSED) {
+		return_zone(FAIL);
+	}
+
+	const bool is_condition_comptime = mir_is_comptime(cond_insert->cond);
+	if (!is_condition_comptime) {
+		report_error(EXPECTED_COMPTIME, cond_insert->cond->node, "Static if expression is supposed to be known in compile-time.");
+		return_zone(FAIL);
+	}
+
+	const bool  cond       = MIR_CEV_READ_AS(bool, &cond_insert->cond->value);
+	struct ast *then_block = cond ? cond_insert->then_block : cond_insert->else_block;
+	if (!then_block) return_zone(PASS);
+
+	struct mir_insertion_context insertion_context = {0};
+	insertion_begin(ctx, &insertion_context, &cond_insert->base, cond_insert->codegen);
+	{
+		if (then_block->kind == AST_BLOCK) {
+			// Unroll the block. Note we don't create a new scope!
+			for (usize i = 0; i < sarrlenu(then_block->data.block.nodes); ++i) {
+				struct ast *tmp = sarrpeek(then_block->data.block.nodes, i);
+				ast(ctx, tmp);
+			}
+		} else {
+			ast(ctx, then_block);
+		}
+	}
+	insertion_end(ctx, &insertion_context);
+
+	return_zone(PASS);
+}
+
+struct result analyze_instr_defer(struct context *ctx, struct mir_instr_defer *defer) {
+	zone();
+	struct mir_fn *fn = mir_instr_owner_fn(&defer->base);
+	bassert(fn && "Defer statement outside of function is not supported!");
+	sarrput(&fn->defer_stack, defer->code);
+	return_zone(PASS);
+}
+
+struct result analyze_instr_defer_insert(struct context *ctx, struct mir_instr_defer_insert *defer_insert) {
+	zone();
+	bassert(defer_insert->base.node);
+
+	if (defer_insert->base.owner_block->is_unreachable) return_zone(PASS);
+
+	struct scope *scope = defer_insert->base.node->owner_scope;
+	bassert(scope);
+
+	struct mir_fn *fn = mir_instr_owner_fn(&defer_insert->base);
+	bassert(fn);
+
+	const s64 num = sarrlen(&fn->defer_stack);
+	if (!num) return_zone(PASS);
+
+	const bool whole_tree = defer_insert->whole_tree;
+
+	// clang-format off
+	struct mir_insertion_context insertion_context = {0};
+	insertion_begin(ctx, &insertion_context, &defer_insert->base, defer_insert->codegen); {
+		while (scope_is_local(scope))  {
+			for (s32 index = num; index-- > 0;) {
+				struct ast *node = sarrpeek(&fn->defer_stack, index);
+				if (node->owner_scope != scope) continue;
+				ast(ctx, node);
+			}
+			if (!whole_tree) break;
+			scope = scope->parent;
+		}
+	} insertion_end(ctx, &insertion_context);
+	// clang-format on
+
+	return_zone(PASS);
+}
+
 struct result analyze_instr_unop(struct context *ctx, struct mir_instr_unop *unop) {
 	zone();
 	if (mir_is_volatile_int_type(unop->expr)) {
@@ -7799,12 +8030,11 @@ struct result analyze_instr_decl_var(struct context *ctx, struct mir_instr_decl_
 // =================================================================================================
 
 static void poly_type_match(struct mir_type *recipe, struct mir_type *other, struct mir_type **poly_type, struct mir_type **matching_type) {
-#define push_if_valid(expr)      \
-	if (is_valid) {              \
+#define push_if_valid(expr) \
+	if (is_valid) { \
 		sarrput(&queue, (expr)); \
-	}                            \
+	} \
 	(void)0
-
 	zone();
 	mir_types_t queue = SARR_ZERO;
 
@@ -8447,7 +8677,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 	if (index == -1) {
 		// Prepare global state for the function generation.
-		ctx->fn_generate.current_scope_layer  = ++recipe->scope_layer;
+		ctx->codegen->current_scope_layer     = ++recipe->scope_layer;
 		ctx->fn_generate.is_generation_active = true;
 
 		if (isflag(recipe_fn->generated_flavor, MIR_FN_GENERATED_MIXED)) {
@@ -8496,6 +8726,7 @@ struct result analyze_call_stage_generate(struct context *ctx, struct mir_instr_
 
 		// Restore previous state.
 		memset(&ctx->fn_generate, 0, sizeof(ctx->fn_generate));
+		ctx->codegen->current_scope_layer = SCOPE_DEFAULT_LAYER;
 
 		if (replacement_hash != 0) {
 			// Function can be identified by hash (calculated from arguments) so we can reuse the
@@ -8583,7 +8814,7 @@ struct result analyze_call_stage_prescan_arguments(struct context *ctx, struct m
 
 		// Nothing to do for vargs.
 		if (fn_arg->type->kind == MIR_TYPE_VARGS) {
-			bassert(isnotflag(fn_arg->flags, FLAG_COMPTIME) && "Comptime vargs are not supported!");
+			bassert(!isflag(fn_arg->flags, FLAG_COMPTIME) && "Comptime vargs are not supported!");
 			bassert(index + 1 == func_argc && "VArgs must be the last function argument.");
 			if (is_vargs_converting_to_any(ctx, fn_arg->type)) {
 				for (; index < call_argc; ++index) {
@@ -8733,7 +8964,7 @@ struct result analyze_call_stage_finalize(struct context *ctx, struct mir_instr_
 
 		bassert(call_arg_instr);
 
-		if (isflag(fn_arg->flags, FLAG_COMPTIME) && isnotflag(called_function_flags, FLAG_EXTERN)) {
+		if (isflag(fn_arg->flags, FLAG_COMPTIME) && !isflag(called_function_flags, FLAG_EXTERN)) {
 			bassert(!is_vargs && "VArgs cannot be comptime for now!");
 			bassert(!expected_vargs_elem_type);
 
@@ -8837,7 +9068,9 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 
 	// Append implicit return for void functions or generate error when last
 	// block is not terminated
+
 	if (!is_block_terminated(block)) {
+
 		// Exit block and it's terminal break instruction are generated during ast
 		// instruction pass and it must be already terminated. Here we generate only breaks to
 		// the exit block in case analyzed block is not correctly terminated (it's pretty common
@@ -8847,15 +9080,39 @@ struct result analyze_instr_block(struct context *ctx, struct mir_instr_block *b
 		if (fn->type->data.fn.ret_type->kind == MIR_TYPE_VOID) {
 			set_current_block(ctx, block);
 			bassert(fn->exit_block && "Current function does not have exit block set or even generated!");
+			// @Note 2026-01-26: This is related to the fact that we might have defer insert instruction already in place
+			//                   in case it was introduced explicitly by user-defined lexical scope. Thus we check if it's
+			//                   present and just change `whole_tree` in case it is. See function `ast_block()`.
+			if (block->base.node) {
+				if (block->last_instr && block->last_instr->kind == MIR_INSTR_DEFER_INSERT) {
+					((struct mir_instr_defer_insert *)block->last_instr)->whole_tree = true;
+				} else {
+					append_instr_defer_insert(ctx, block->base.node, true);
+				}
+			}
 			append_instr_br(ctx, NULL, fn->exit_block);
 		} else if (block->is_unreachable || block->base.ref_count == 0) {
 			set_current_block(ctx, block);
 			append_instr_br(ctx, NULL, fn->exit_block);
-		} else {
-			report_error(MISSING_RETURN, fn->decl_node, "Not every path inside function return value.");
 		}
 	}
+
+	if (!block->entry_instr) {
+		analyze_instr_block_finalize(ctx, block);
+	}
+
 	return_zone(PASS);
+}
+
+void analyze_instr_block_finalize(struct context *ctx, struct mir_instr_block *block) {
+	bassert(block);
+	struct mir_fn *fn = block->owner_fn;
+	if (!fn) { // block in global scope
+		return;
+	}
+
+	if (is_block_terminated(block)) return;
+	report_error(MISSING_RETURN, fn->decl_node, "Not every path inside the function return value.");
 }
 
 enum result_state _analyze_slot(struct context *ctx, const analyze_stage_fn_t *conf, struct mir_instr *parent_instr, struct mir_instr **input, struct mir_type *slot_type, bool is_initializer) {
@@ -9443,6 +9700,15 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr) {
 		case MIR_INSTR_COND_BR:
 			state = analyze_instr_cond_br(ctx, (struct mir_instr_cond_br *)instr);
 			break;
+		case MIR_INSTR_DEFER:
+			analyze_instr_defer(ctx, (struct mir_instr_defer *)instr);
+			break;
+		case MIR_INSTR_DEFER_INSERT:
+			analyze_instr_defer_insert(ctx, (struct mir_instr_defer_insert *)instr);
+			break;
+		case MIR_INSTR_COND_INSERT:
+			state = analyze_instr_cond_insert(ctx, (struct mir_instr_cond_insert *)instr);
+			break;
 		case MIR_INSTR_UNOP:
 			state = analyze_instr_unop(ctx, (struct mir_instr_unop *)instr);
 			break;
@@ -9554,6 +9820,9 @@ struct result analyze_instr(struct context *ctx, struct mir_instr *instr) {
 			// could change based on usage.
 			(*analyze_state) = MIR_IS_COMPLETE;
 			return_zone(state);
+		} else if (instr->kind == MIR_INSTR_COND_INSERT) {
+			(*analyze_state) = MIR_IS_COMPLETE;
+			return_zone(state);
 		}
 
 		const enum vm_interp_state eval_state = evaluate(ctx, instr);
@@ -9587,6 +9856,7 @@ static inline struct mir_instr *analyze_try_get_next(struct mir_instr *instr) {
 		struct mir_instr_block *block = (struct mir_instr_block *)instr;
 		return block->entry_instr;
 	}
+
 	// Instruction can be the last instruction inside block, but block may not
 	// be the last block inside function, we try to get following one.
 	struct mir_instr_block *owner_block = instr->owner_block;
@@ -9597,10 +9867,53 @@ static inline struct mir_instr *analyze_try_get_next(struct mir_instr *instr) {
 			// set flag with this information here.
 			owner_block->owner_fn->is_fully_analyzed = true;
 		}
+
 		// Return following block.
 		return owner_block->base.next;
 	}
+
 	return instr->next;
+}
+
+static inline struct mir_instr *analyze_get_next_instr(struct context *ctx, struct mir_instr *curr_instr, usize *index, usize *stack_index, bool skip) {
+	if (!skip) {
+		struct mir_instr *next = analyze_try_get_next(curr_instr);
+		if (next) return next;
+	}
+
+	if (*index >= arrlenu(ctx->analyze->stack[*stack_index])) {
+		arrsetlen(ctx->analyze->stack[*stack_index], 0);
+		*index       = 0;
+		*stack_index = analyze_swap(ctx);
+		if (arrlenu(ctx->analyze->stack[*stack_index]) == 0)
+			return NULL;
+	}
+
+	return ctx->analyze->stack[*stack_index][(*index)++];
+}
+
+static inline void analyze_enque_waiting(struct context *ctx, struct mir_instr *curr_instr, struct result result) {
+	instrs_t    *wait_queue = NULL;
+	const hash_t hash       = result.waiting_for;
+	s32          index      = tbl_lookup_index(ctx->analyze->waiting, hash);
+	if (index == -1) {
+		struct waiting_entry entry = (struct waiting_entry){.hash = hash, .value = ((instrs_t)SARR_ZERO)};
+		tbl_insert(ctx->analyze->waiting, entry);
+
+		index = (s32)tbl_len(ctx->analyze->waiting) - 1; // New item is the last in the array.
+		bassert(index >= -1);
+
+		wait_queue = &ctx->analyze->waiting[index].value;
+	} else {
+		wait_queue = &ctx->analyze->waiting[index].value;
+	}
+
+	bassert(wait_queue);
+	sarrput(wait_queue, curr_instr);
+}
+
+static inline bool can_erase_instr(struct mir_instr *instr) {
+	return instr->state == MIR_IS_COMPLETE && instr->ref_count == 0;
 }
 
 void analyze(struct context *ctx) {
@@ -9608,67 +9921,54 @@ void analyze(struct context *ctx) {
 	bcheck_main_thread();
 
 	struct result     result;
-	usize             pc = 0, i = 0, si = analyze_swap(ctx);
-	struct mir_instr *ip = NULL, *pip = NULL;
+	usize             pending_count = 0, index = 0, stack_index = analyze_swap(ctx);
+	struct mir_instr *curr_instr = NULL, *prev_instr = NULL;
 	bool              skip = false;
 
 	while (true) {
-		pip = ip;
-		ip  = skip ? NULL : analyze_try_get_next(ip);
+
 		// Remove unused instructions here!
-		if (pip && (pip->state == MIR_IS_COMPLETE) && pip->ref_count == 0) erase_instr_tree(pip, false, false);
-		if (ip == NULL) {
-			if (i >= arrlenu(ctx->analyze->stack[si])) {
-				// No other instructions in current analyzed stack, let's try the other one.
-				arrsetlen(ctx->analyze->stack[si], 0);
-				i  = 0;
-				si = analyze_swap(ctx);
-				if (arrlenu(ctx->analyze->stack[si]) == 0) break;
-			}
-			ip   = ctx->analyze->stack[si][i++];
-			skip = false;
+		if (prev_instr && can_erase_instr(prev_instr)) {
+			erase_instr_tree(prev_instr, false, false);
 		}
-		bmagic_assert(ip);
-		result = analyze_instr(ctx, ip);
+
+		prev_instr = curr_instr;
+		curr_instr = analyze_get_next_instr(ctx, curr_instr, &index, &stack_index, skip);
+		skip       = false;
+
+		if (!curr_instr) break;
+		bmagic_assert(curr_instr);
+
+		result = analyze_instr(ctx, curr_instr);
+		if (is_last_instr_in_block(curr_instr)) {
+			analyze_instr_block_finalize(ctx, curr_instr->owner_block);
+		}
 
 		switch (result.state) {
 		case ANALYZE_PASSED:
 		case ANALYZE_SKIP:
-			pc = 0;
+			pending_count = 0;
 			break;
 
 		case ANALYZE_FAILED:
-			skip = true;
-			pc   = 0;
+			pending_count = 0;
+			skip          = true;
 			break;
 
 		case ANALYZE_POSTPONE:
-			skip = true;
 			// This is preventing analyze endless looping in case one or more instructions are
 			// postponed every time. We do not reschedule analyze of the instruction when
 			// postpone count reach total instruction pending count (analyze stack contains only
 			// postponed instructions).
-			if (pc++ <= analyze_pending_count(ctx)) analyze_schedule(ctx, ip);
+			if (pending_count++ <= analyze_pending_count(ctx)) analyze_schedule(ctx, curr_instr);
+			skip = true;
 			break;
 
-		case ANALYZE_WAIT: {
-			instrs_t    *wq;
-			const hash_t hash  = result.waiting_for;
-			s32          index = tbl_lookup_index(ctx->analyze->waiting, hash);
-			if (index == -1) {
-				struct waiting_entry entry = (struct waiting_entry){.hash = hash, .value = ((instrs_t)SARR_ZERO)};
-				tbl_insert(ctx->analyze->waiting, entry);
-				index = (s32)tbl_len(ctx->analyze->waiting) - 1; // New item is last in the array.
-				bassert(index >= -1);
-				wq = &ctx->analyze->waiting[index].value;
-			} else {
-				wq = &ctx->analyze->waiting[index].value;
-			}
-			bassert(wq);
-			sarrput(wq, ip);
-			skip = true;
-			pc   = 0;
-		}
+		case ANALYZE_WAIT:
+			analyze_enque_waiting(ctx, curr_instr, result);
+			pending_count = 0;
+			skip          = true;
+			break;
 		}
 	}
 	return_zone();
@@ -9752,8 +10052,8 @@ void analyze_report_unresolved(struct context *ctx) {
 						report_error(UNKNOWN_SYMBOL, instr->node, "Cyclic dependency introduced by '" STR_FMT "'. Entity declaration refers to itself in the initialization expression.", STR_ARG(sym_name));
 						report_note(ref->scope_entry->node, "Entity declared here:");
 						++reported;
+						continue;
 					}
-					continue;
 				}
 				break;
 			}
@@ -9764,6 +10064,7 @@ void analyze_report_unresolved(struct context *ctx) {
 
 			bassert(sym_name.len && "Invalid unresolved symbol name!");
 			report_error(UNKNOWN_SYMBOL, instr->node, "Unknown symbol '" STR_FMT "'.", STR_ARG(sym_name));
+			report_poly(instr);
 
 			if (str_match(sym_name, builtin_ids[BUILTIN_ID_MAIN].str)) {
 				report_note(NULL, "Executable requires 'main' entry point function: \n\n\tmain :: fn () s32 {\n\t\treturn 0;\n\t}\n");
@@ -9773,6 +10074,16 @@ void analyze_report_unresolved(struct context *ctx) {
 		}
 	}
 	if (tbl_len(ctx->analyze->waiting) && !reported) {
+#if BL_DEBUG_ENABLE
+		for (u32 i = 0; i < tbl_len(ctx->analyze->waiting); ++i) {
+			instrs_t *wq = &ctx->analyze->waiting[i].value;
+			for (usize j = 0; j < sarrlenu(wq); ++j) {
+				struct mir_instr *instr = sarrpeek(wq, j);
+				blog("Waiting instruction: %%%llu %s", instr->id, mir_instr_name(instr));
+			}
+		}
+#endif
+
 		report_error(UNKNOWN_SYMBOL, NULL, "Unknown symbol/s detected but not correctly reported, this is compiler bug!");
 	}
 }
@@ -10379,41 +10690,21 @@ struct mir_var *rtti_gen_fn_group(struct context *ctx, struct mir_type *type) {
 	return rtti_var;
 }
 
-// Generate instructions for ast nodes pushed into defer_stack in reverse order.
-//
-// There are two cases in general:
-// 1) We're at the end of lexical block, so we want to generate all deferred instructions
-//    registered  only in the block scope. The whole_branch = false.
-// 2) We're at then end of block terminated by return instruction, so we want to generate
-//    all registered deferred instructions in the stack. The whole_branch = true.
-void ast_defer_block(struct context *ctx, struct scope *block_owner_scope, bool whole_branch) {
-	bassert(ctx->ast.current_defer_stack_index >= 0);
-	bassert(block_owner_scope);
-	defer_stack_t *stack = &ctx->ast.defer_stack[ctx->ast.current_defer_stack_index];
-	struct ast    *defer;
-	for (usize i = sarrlenu(stack); i-- > 0;) {
-		defer = sarrpeek(stack, i);
-		if (defer->owner_scope == block_owner_scope) {
-			sarrpop(stack);
-		} else if (!whole_branch) {
-			break;
-		}
-		ast(ctx, defer->data.stmt_defer.expr);
-	}
-}
-
 void ast_ublock(struct context *ctx, struct ast *ublock) {
 	for (usize i = 0; i < arrlenu(ublock->data.ublock.nodes); ++i) {
 		ast(ctx, ublock->data.ublock.nodes[i]);
 	}
 }
 
-void ast_block(struct context *ctx, struct ast *block) {
-	for (usize i = 0; i < sarrlenu(block->data.block.nodes); ++i) {
-		struct ast *tmp = sarrpeek(block->data.block.nodes, i);
+void ast_block(struct context *ctx, struct ast *ast_block) {
+	for (usize i = 0; i < sarrlenu(ast_block->data.block.nodes); ++i) {
+		struct ast *tmp = sarrpeek(ast_block->data.block.nodes, i);
 		ast(ctx, tmp);
 	}
-	if (!block->data.block.has_return) ast_defer_block(ctx, block->owner_scope, false);
+
+	if (ast_block->data.block.has_return || is_current_block_terminated(ctx)) return;
+	// @Note 2026-01-26: Handle situation when explicit lexical block was introduced by user.
+	append_instr_defer_insert(ctx, ast_block, false);
 }
 
 void ast_unreachable(struct context *ctx, struct ast *unr) {
@@ -10429,15 +10720,19 @@ struct mir_instr *ast_stmt_if(struct context *ctx, struct ast *stmt_if) {
 	struct ast *ast_then      = stmt_if->data.stmt_if.true_stmt;
 	struct ast *ast_else      = stmt_if->data.stmt_if.false_stmt;
 	bassert(ast_condition && ast_then);
-	struct mir_fn *fn = ast_current_fn(ctx);
-	bassert(fn);
+
+	struct mir_instr *cond      = ast(ctx, ast_condition);
+	const bool        is_static = stmt_if->data.stmt_if.is_static;
+
+	if (is_static) {
+		return append_instr_cond_insert(ctx, stmt_if, cond, ast_then, ast_else);
+	}
 
 	struct mir_instr_phi *ternary_phi = NULL;
-	if (stmt_if->data.stmt_if.is_expression)
+	if (stmt_if->data.stmt_if.is_expression) {
 		ternary_phi = (struct mir_instr_phi *)create_instr_phi(ctx, stmt_if);
+	}
 
-	const bool              is_static       = stmt_if->data.stmt_if.is_static;
-	struct mir_instr       *cond            = ast(ctx, ast_condition);
 	struct mir_instr_block *root_block      = ast_current_block(ctx);
 	struct mir_instr_block *then_block      = NULL;
 	struct mir_instr_block *else_block      = NULL;
@@ -10447,8 +10742,11 @@ struct mir_instr *ast_stmt_if(struct context *ctx, struct ast *stmt_if) {
 
 	const bool is_unreachable = root_block->is_unreachable;
 
+	struct mir_fn *fn = ast_current_fn(ctx);
+	bassert(fn);
+
 	{ // then block
-		then_block = append_block(ctx, fn, cstr("if_then"), is_unreachable);
+		then_block = append_block(ctx, ast_then, fn, cstr("if_then"), is_unreachable);
 		set_current_block(ctx, then_block);
 		struct mir_instr *maybe_then_expression = ast(ctx, ast_then);
 		last_then_block                         = ast_current_block(ctx);
@@ -10463,7 +10761,7 @@ struct mir_instr *ast_stmt_if(struct context *ctx, struct ast *stmt_if) {
 	}
 
 	if (ast_else) { // else block
-		else_block = append_block(ctx, fn, cstr("if_else"), is_unreachable);
+		else_block = append_block(ctx, ast_else, fn, cstr("if_else"), is_unreachable);
 		set_current_block(ctx, else_block);
 		struct mir_instr *maybe_else_expression = ast(ctx, ast_else);
 		last_else_block                         = ast_current_block(ctx);
@@ -10478,7 +10776,7 @@ struct mir_instr *ast_stmt_if(struct context *ctx, struct ast *stmt_if) {
 	}
 
 	// continue block
-	continue_block = append_block(ctx, fn, cstr("if_continue"), is_unreachable);
+	continue_block = append_block(ctx, stmt_if, fn, cstr("if_continue"), is_unreachable);
 
 	bassert(root_block && then_block);
 	set_current_block(ctx, root_block);
@@ -10518,21 +10816,25 @@ void ast_stmt_loop(struct context *ctx, struct ast *loop) {
 
 	// prepare all blocks
 	struct mir_instr_block *tmp_block           = NULL;
-	struct mir_instr_block *increment_block     = ast_increment ? append_block(ctx, fn, cstr("loop_increment"), is_unreachable) : NULL;
-	struct mir_instr_block *decide_block        = append_block(ctx, fn, cstr("loop_decide"), is_unreachable);
-	struct mir_instr_block *body_block          = append_block(ctx, fn, cstr("loop_body"), is_unreachable);
-	struct mir_instr_block *continue_block      = append_block(ctx, fn, cstr("loop_continue"), is_unreachable);
-	struct mir_instr_block *prev_break_block    = ctx->ast.break_block;
-	struct mir_instr_block *prev_continue_block = ctx->ast.continue_block;
-	ctx->ast.break_block                        = continue_block;
-	ctx->ast.continue_block                     = ast_increment ? increment_block : decide_block;
+	struct mir_instr_block *increment_block     = ast_increment ? append_block(ctx, NULL, fn, cstr("loop_increment"), is_unreachable) : NULL;
+	struct mir_instr_block *decide_block        = append_block(ctx, NULL, fn, cstr("loop_decide"), is_unreachable);
+	struct mir_instr_block *body_block          = append_block(ctx, NULL, fn, cstr("loop_body"), is_unreachable);
+	struct mir_instr_block *continue_block      = append_block(ctx, NULL, fn, cstr("loop_continue"), is_unreachable);
+	struct mir_instr_block *prev_break_block    = ctx->codegen->break_block;
+	struct mir_instr_block *prev_continue_block = ctx->codegen->continue_block;
+
+	ctx->codegen->break_block    = continue_block;
+	ctx->codegen->continue_block = ast_increment ? increment_block : decide_block;
+
 	// generate initialization if there is one
 	if (ast_init) ast(ctx, ast_init);
+
 	// decide block
 	append_instr_br(ctx, ast_condition, decide_block);
 	set_current_block(ctx, decide_block);
 	struct mir_instr *condition = ast_condition ? ast(ctx, ast_condition) : append_instr_const_bool(ctx, NULL, true);
 	append_instr_cond_br(ctx, ast_condition, condition, body_block, continue_block, false);
+
 	// loop body
 	set_current_block(ctx, body_block);
 	ast(ctx, ast_block);
@@ -10540,25 +10842,29 @@ void ast_stmt_loop(struct context *ctx, struct ast *loop) {
 	if (!is_block_terminated(tmp_block)) {
 		append_instr_br(ctx, ast_block, ast_increment ? increment_block : decide_block);
 	}
+
 	// increment if there is one
 	if (ast_increment) {
 		set_current_block(ctx, increment_block);
 		ast(ctx, ast_increment);
 		append_instr_br(ctx, ast_increment, decide_block);
 	}
-	ctx->ast.break_block    = prev_break_block;
-	ctx->ast.continue_block = prev_continue_block;
+
+	ctx->codegen->break_block    = prev_break_block;
+	ctx->codegen->continue_block = prev_continue_block;
 	set_current_block(ctx, continue_block);
 }
 
 void ast_stmt_break(struct context *ctx, struct ast *br) {
-	bassert(ctx->ast.break_block && "Break statement outside the loop.");
-	append_instr_br(ctx, br, ctx->ast.break_block);
+	bassert(ctx->codegen->break_block && "Break statement outside the loop.");
+	append_instr_defer_insert(ctx, br, false);
+	append_instr_br(ctx, br, ctx->codegen->break_block);
 }
 
 void ast_stmt_continue(struct context *ctx, struct ast *cont) {
-	bassert(ctx->ast.continue_block && "Break statement outside the loop.");
-	append_instr_br(ctx, cont, ctx->ast.continue_block);
+	bassert(ctx->codegen->continue_block && "Break statement outside the loop.");
+	append_instr_defer_insert(ctx, cont, false);
+	append_instr_br(ctx, cont, ctx->codegen->continue_block);
 }
 
 void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch) {
@@ -10573,7 +10879,7 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch) {
 	struct mir_instr_block *root_block     = ast_current_block(ctx);
 	const bool              is_unreachable = root_block->is_unreachable;
 
-	struct mir_instr_block *cont_block           = append_block(ctx, fn, cstr("switch_continue"), is_unreachable);
+	struct mir_instr_block *cont_block           = append_block(ctx, NULL, fn, cstr("switch_continue"), is_unreachable);
 	struct mir_instr_block *default_block        = cont_block;
 	bool                    user_defined_default = false;
 
@@ -10584,7 +10890,7 @@ void ast_stmt_switch(struct context *ctx, struct ast *stmt_switch) {
 		struct mir_instr_block *case_block = NULL;
 
 		if (ast_case->data.stmt_case.block) {
-			case_block                 = append_block(ctx, fn, is_default ? cstr("switch_default") : cstr("switch_case"), is_unreachable);
+			case_block                 = append_block(ctx, NULL, fn, is_default ? cstr("switch_default") : cstr("switch_case"), is_unreachable);
 			case_block->is_unreachable = is_unreachable;
 
 			set_current_block(ctx, case_block);
@@ -10637,6 +10943,7 @@ void ast_stmt_return(struct context *ctx, struct ast *ret) {
 	ast_nodes_t      *ast_values     = ret->data.stmt_return.exprs;
 	const bool        is_multireturn = sarrlenu(ast_values) > 1;
 	struct mir_instr *value          = NULL;
+
 	if (is_multireturn) {
 		// Generate multi-return compound expression to group all values into single one.
 		const usize   valc   = sarrlenu(ast_values);
@@ -10657,6 +10964,7 @@ void ast_stmt_return(struct context *ctx, struct ast *ret) {
 		bassert(ast_value && "Expected at least one return value when return expression array is not NULL.");
 		value = ast(ctx, ast_value);
 	}
+
 	struct mir_fn *fn = ast_current_fn(ctx);
 	if (!is_current_block_terminated(ctx)) {
 		bassert(fn);
@@ -10670,16 +10978,16 @@ void ast_stmt_return(struct context *ctx, struct ast *ret) {
 		} else if (value) {
 			report_error(UNEXPECTED_EXPR, value->node, "Unexpected return value.");
 		}
-		ast_defer_block(ctx, ret->owner_scope, true);
 	}
+
 	struct mir_instr_block *exit_block = fn->exit_block;
 	bassert(exit_block);
+	append_instr_defer_insert(ctx, ret, true);
 	append_instr_br(ctx, ret, exit_block);
 }
 
-void ast_stmt_defer(struct context *ctx, struct ast *defer) {
-	// push new defer record
-	sarrput(&ctx->ast.defer_stack[ctx->ast.current_defer_stack_index], defer);
+struct mir_instr *ast_stmt_defer(struct context *ctx, struct ast *defer) {
+	return append_instr_defer(ctx, defer, defer->data.stmt_defer.expr);
 }
 
 struct mir_instr *ast_call_loc(struct context *ctx, struct ast *loc) {
@@ -10902,7 +11210,7 @@ struct mir_instr *ast_expr_call(struct context *ctx, struct ast *call) {
 	                         .callee           = ast(ctx, ast_callee),
 	                         .args             = args,
 	                         .is_comptime      = call->data.expr_call.is_comptime,
-	                         .is_inside_recipe = ctx->ast.is_inside_recipe);
+	                         .is_inside_recipe = ctx->codegen->is_inside_recipe);
 }
 
 struct mir_instr *ast_expr_catch(struct context *ctx, struct ast *catch) {
@@ -10921,14 +11229,14 @@ struct mir_instr *ast_expr_catch(struct context *ctx, struct ast *catch) {
 	bassert(call && call->base.kind == MIR_INSTR_CALL);
 	call->catch_block = catch;
 
-	struct mir_instr_call *prev_catched_call = ctx->ast.current_catched_call;
-	ctx->ast.current_catched_call            = call;
+	struct mir_instr_call *prev_catched_call = ctx->codegen->current_catched_call;
+	ctx->codegen->current_catched_call       = call;
 
 	// Optional custom condition.
 	struct mir_instr *cond = append_instr_unroll(ctx, catch, &call->base, NULL, UNROLL_LAST_INDEX, true);
 
-	struct mir_instr_block *catch_block    = append_block(ctx, fn, cstr("catch"), is_unreachable);
-	struct mir_instr_block *continue_block = append_block(ctx, fn, cstr("catch_continue"), is_unreachable);
+	struct mir_instr_block *catch_block    = append_block(ctx, NULL, fn, cstr("catch"), is_unreachable);
+	struct mir_instr_block *continue_block = append_block(ctx, NULL, fn, cstr("catch_continue"), is_unreachable);
 
 	struct mir_instr_cond_br *br = (struct mir_instr_cond_br *)append_instr_cond_br(ctx, catch, cond, catch_block, continue_block, false);
 	br->is_catch                 = true;
@@ -10944,13 +11252,13 @@ struct mir_instr *ast_expr_catch(struct context *ctx, struct ast *catch) {
 	}
 
 	set_current_block(ctx, continue_block);
-	ctx->ast.current_catched_call = prev_catched_call;
+	ctx->codegen->current_catched_call = prev_catched_call;
 
 	return &call->base;
 }
 
 struct mir_instr *ast_expr_err(struct context *ctx, struct ast *err) {
-	struct mir_instr_call *catched_call = ctx->ast.current_catched_call;
+	struct mir_instr_call *catched_call = ctx->codegen->current_catched_call;
 	if (!catched_call) {
 		report_error(INVALID_EXPR, err, "Error capture cannot be used outside of error handling block or expression introduced by 'catch' statement.");
 		return NULL;
@@ -10994,17 +11302,17 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 		// @Note 2025-12-01: Disable function generation for extern mixed functions, such a function has no body
 		//                   thus there is nothing to be generated. We use this for comptime compiler builtin functions
 		//                   mainly taking 'type' in arguments.
-		if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED) && isnotflag(args->flags, FLAG_EXTERN)) {
+		if (isflag(function_type_flavor, AST_TYPE_FN_FLAVOR_MIXED) && !isflag(args->flags, FLAG_EXTERN)) {
 			setflag(functon_generated_flavor_flags, MIR_FN_GENERATED_MIXED);
 		}
 	}
 
 	// Check whether the function body must be generated during compilation.
-	const bool is_generated   = functon_generated_flavor_flags != 0;
-	ctx->ast.is_inside_recipe = is_generated;
+	const bool is_generated        = functon_generated_flavor_flags != 0;
+	ctx->codegen->is_inside_recipe = is_generated;
 
-	const bool prev_is_inside_fn_declaration = ctx->ast.is_inside_fn_declaration;
-	ctx->ast.is_inside_fn_declaration        = true;
+	const bool prev_is_inside_fn_declaration = ctx->codegen->is_inside_fn_declaration;
+	ctx->codegen->is_inside_fn_declaration   = true;
 
 	struct mir_instr_fn_proto *fn_proto = (struct mir_instr_fn_proto *)append_instr_fn_proto(ctx, args->lit_fn, NULL, NULL, true);
 
@@ -11016,13 +11324,10 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 	fn_proto->enable_if = ast_create_expr_resolver_call(ctx, RESOLVE_EXPR_FN_NAME, ctx->builtin_types->t_resolve_bool_expr_fn, ast_enable_if);
 
 	bassert(!(ctx->fn_generate.is_generation_active && sarrlen(&ctx->fn_generate.replacement_queue) != ctx->fn_generate.replacement_queue_index));
-	ctx->fn_generate.is_generation_active = false;
-	ctx->ast.is_inside_recipe             = false;
-	ctx->ast.is_inside_fn_declaration     = prev_is_inside_fn_declaration;
+	ctx->fn_generate.is_generation_active  = false;
+	ctx->codegen->is_inside_recipe         = false;
+	ctx->codegen->is_inside_fn_declaration = prev_is_inside_fn_declaration;
 
-	// Prepare new function context. Must be in sync with pop at the end of scope!
-	// DON'T CALL FINISH BEFORE THIS!!!
-	ast_push_defer_stack(ctx);
 	struct mir_instr_block *prev_block = ast_current_block(ctx);
 
 	struct mir_fn *fn = create_fn(ctx,
@@ -11077,8 +11382,8 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 	fn->body_scope = ast_block->owner_scope;
 
 	// create block for initialization locals and arguments
-	struct mir_instr_block *init_block = append_block(ctx, fn, cstr("entry"), false);
-	init_block->base.ref_count         = MIR_NO_REF_COUNTING;
+	struct mir_instr_block *entry_block = append_block(ctx, ast_block, fn, cstr("entry"), false);
+	entry_block->base.ref_count         = MIR_NO_REF_COUNTING;
 	// Every user generated function must contain exit block; this block is invoked last
 	// in every function eventually can return .ret value stored in temporary storage.
 	// When ast parser hit user defined 'return' statement it sets up .ret temporary if
@@ -11086,11 +11391,11 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 	// defer statement, because we need to call defer blocks after return value
 	// evaluation and before terminal instruction of the function. Last defer block
 	// always breaks into the exit block.
-	struct mir_instr_block *exit_block = append_block(ctx, fn, cstr("exit"), false);
+	struct mir_instr_block *exit_block = append_block(ctx, ast_block, fn, cstr("exit"), false);
 	fn->exit_block                     = (struct mir_instr_block *)ref_instr(&exit_block->base); // Exit block is always referenced
 
 	if (ast_fn_type->data.type_fn.ret_type) {
-		set_current_block(ctx, init_block);
+		set_current_block(ctx, entry_block);
 		fn->ret_tmp = append_instr_decl_var_impl(ctx,
 		                                         .name                = unique_name(ctx, IMPL_RET_TMP),
 		                                         .is_mutable          = true,
@@ -11102,7 +11407,7 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 		set_current_block(ctx, exit_block);
 		append_instr_ret(ctx, ast_block, NULL, false);
 	}
-	set_current_block(ctx, init_block);
+	set_current_block(ctx, entry_block);
 
 	// build MIR for fn arguments
 	ast_nodes_t *ast_args = ast_fn_type->data.type_fn.args;
@@ -11145,7 +11450,6 @@ struct mir_instr *_ast_expr_lit_fn(struct context *ctx, ast_expr_lit_fn_args_t *
 
 FINISH:
 	set_current_block(ctx, prev_block);
-	ast_pop_defer_stack(ctx);
 	return &fn_proto->base;
 }
 
@@ -11276,12 +11580,12 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop) {
 		const bool              is_unreachable     = lhs_continue_block->is_unreachable;
 
 		// rhs
-		struct mir_instr_block *rhs_block = append_block(ctx, fn, cstr("rhs_block"), is_unreachable);
+		struct mir_instr_block *rhs_block = append_block(ctx, NULL, fn, cstr("rhs_block"), is_unreachable);
 		set_current_block(ctx, rhs_block);
 		struct mir_instr       *rhs                = ast(ctx, ast_rhs);
 		struct mir_instr_block *rhs_continue_block = ast_current_block(ctx);
 
-		struct mir_instr_block *continue_block = append_block(ctx, fn, cstr("continue_block"), is_unreachable);
+		struct mir_instr_block *continue_block = append_block(ctx, NULL, fn, cstr("continue_block"), is_unreachable);
 
 		// Terminate lhs
 		set_current_block(ctx, lhs_continue_block);
@@ -11546,7 +11850,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
 		analyze_instr_rq(ctx, value);
 
 		// Set current fwd decl
-		ctx->ast.current_fwd_struct_decl = value;
+		ctx->codegen->current_fwd_struct_decl = value;
 	}
 
 	struct mir_instr_block *init_block;
@@ -11575,7 +11879,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
 		                                               .is_struct_typedef = is_struct_decl);
 
 		{
-			// Append initialized into the init block.
+			// Append initializer into the init block.
 			set_current_block(ctx, init_block);
 			struct mir_instr *current_init = init_value;
 			if (is_unroll) {
@@ -11595,7 +11899,7 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
 
 	// Struct decl cleanup.
 	if (is_struct_decl) {
-		ctx->ast.current_fwd_struct_decl = NULL;
+		ctx->codegen->current_fwd_struct_decl = NULL;
 	}
 }
 
@@ -11684,8 +11988,8 @@ struct mir_instr *ast_decl_arg(struct context *ctx, struct ast *arg) {
 	                                 .index                 = arg->data.decl_arg.index,
 	                                 .entry                 = entry,
 	                                 .generation_call       = ctx->fn_generate.call,
-	                                 .is_inside_declaration = ctx->ast.is_inside_fn_declaration,
-	                                 .is_inside_recipe      = ctx->ast.is_inside_recipe,
+	                                 .is_inside_declaration = ctx->codegen->is_inside_fn_declaration,
+	                                 .is_inside_recipe      = ctx->codegen->is_inside_recipe,
 	                             });
 }
 
@@ -11732,7 +12036,7 @@ struct mir_instr *ast_ref(struct context *ctx, struct ast *ref) {
 	struct ast *next  = ref->data.ref.next;
 	if (!ident) return NULL;
 
-	const hash_t scope_layer = ctx->fn_generate.current_scope_layer;
+	const hash_t scope_layer = ctx->codegen->current_scope_layer;
 
 	if (next) {
 		bassert(ident);
@@ -11799,7 +12103,7 @@ struct mir_instr *ast_type_fn(struct context *ctx, struct ast *type_fn) {
 		ref_instr(ret_type);
 	}
 
-	return append_instr_type_fn(ctx, type_fn, ret_type, args, is_polymorph, ctx->ast.is_inside_fn_declaration);
+	return append_instr_type_fn(ctx, type_fn, ret_type, args, is_polymorph, ctx->codegen->is_inside_fn_declaration);
 }
 
 struct mir_instr *ast_type_fn_group(struct context *ctx, struct ast *group) {
@@ -11912,8 +12216,8 @@ struct mir_instr *ast_type_enum(struct context *ctx, struct ast *type_enum) {
 
 struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct) {
 	// Consume current struct fwd decl.
-	struct mir_instr *fwd_decl       = ctx->ast.current_fwd_struct_decl;
-	ctx->ast.current_fwd_struct_decl = NULL;
+	struct mir_instr *fwd_decl            = ctx->codegen->current_fwd_struct_decl;
+	ctx->codegen->current_fwd_struct_decl = NULL;
 
 	ast_nodes_t *ast_members             = type_struct->data.type_strct.members;
 	const bool   is_union                = type_struct->data.type_strct.is_union;
@@ -11935,7 +12239,8 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct) 
 
 		struct mir_member *base_member = ((struct mir_instr_decl_member *)base_type)->member;
 		base_member->is_base           = true;
-		provide_builtin_member(ctx, scope, base_member);
+		// @Note 2026-01-22: Base member is commited later when struct type is analyzed.
+		provide_builtin_member(ctx, scope, base_member, false);
 
 		sarrput(members, base_type);
 	}
@@ -11959,7 +12264,7 @@ struct mir_instr *ast_type_struct(struct context *ctx, struct ast *type_struct) 
 	                                .node                    = type_struct,
 	                                .fwd_decl                = fwd_decl,
 	                                .scope                   = scope,
-	                                .scope_layer             = ctx->fn_generate.current_scope_layer,
+	                                .scope_layer             = ctx->codegen->current_scope_layer,
 	                                .members                 = members,
 	                                .is_union                = is_union,
 	                                .is_multiple_return_type = is_multiple_return_type);
@@ -11988,8 +12293,8 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly) {
 			(*queue_index) += 1;
 			bmagic_assert(replacement_type);
 
-			scope_entry->kind      = SCOPE_ENTRY_TYPE;
-			scope_entry->data.type = replacement_type;
+			scope_entry->kind    = SCOPE_ENTRY_TYPE;
+			scope_entry->as.type = replacement_type;
 			return append_instr_const_type(ctx, poly, replacement_type);
 		}
 	}
@@ -12006,7 +12311,7 @@ struct mir_instr *ast_type_poly(struct context *ctx, struct ast *poly) {
 	struct mir_type *master_type = create_type_poly(ctx, scope_entry->id, true);
 	struct mir_type *slave_type  = create_type_poly(ctx, scope_entry->id, false);
 	scope_entry->kind            = SCOPE_ENTRY_TYPE;
-	scope_entry->data.type       = slave_type;
+	scope_entry->as.type         = slave_type;
 
 	struct mir_instr *instr_poly = append_instr_type_poly(ctx, poly, scope_entry->id);
 	MIR_CEV_WRITE_AS(struct mir_type *, &instr_poly->value, master_type);
@@ -12051,7 +12356,7 @@ struct mir_instr *ast_create_expr_resolver_call(struct context *ctx, str_t fn_na
 	MIR_CEV_WRITE_AS(struct mir_fn *, &fn_proto->value, fn);
 
 	fn->type                      = fn_type;
-	struct mir_instr_block *entry = append_block(ctx, fn, cstr("entry"), false);
+	struct mir_instr_block *entry = append_block(ctx, NULL, fn, cstr("entry"), false);
 	entry->base.ref_count         = MIR_NO_REF_COUNTING;
 	set_current_block(ctx, entry);
 	struct mir_instr *result = ast(ctx, ast_expr);
@@ -12557,39 +12862,62 @@ static void provide_builtin_env(struct context *ctx) {
 
 str_t get_intrinsic(const str_t name) {
 	if (!name.len) return str_empty;
-	// clang-format off
 	const str_t map[] = {
-		cstr("memmove.p0.p0.i64"), cstr("__intrinsic_memmove_p0_p0_i64"),
+	    cstr("memmove.p0.p0.i64"),
+	    cstr("__intrinsic_memmove_p0_p0_i64"),
 
-        cstr("sin.f32"), cstr("__intrinsic_sin_f32"),
-        cstr("sin.f64"), cstr("__intrinsic_sin_f64"),
-        cstr("cos.f32"), cstr("__intrinsic_cos_f32"),
-        cstr("cos.f64"), cstr("__intrinsic_cos_f64"),
-        cstr("pow.f32"), cstr("__intrinsic_pow_f32"),
-        cstr("pow.f64"), cstr("__intrinsic_pow_f64"),
-		cstr("exp.f32"), cstr("__intrinsic_exp_f32"),
-		cstr("exp.f64"), cstr("__intrinsic_exp_f64"),
-        cstr("log.f32"), cstr("__intrinsic_log_f32"),
-        cstr("log.f64"), cstr("__intrinsic_log_f64"),
+	    cstr("sin.f32"),
+	    cstr("__intrinsic_sin_f32"),
+	    cstr("sin.f64"),
+	    cstr("__intrinsic_sin_f64"),
+	    cstr("cos.f32"),
+	    cstr("__intrinsic_cos_f32"),
+	    cstr("cos.f64"),
+	    cstr("__intrinsic_cos_f64"),
+	    cstr("pow.f32"),
+	    cstr("__intrinsic_pow_f32"),
+	    cstr("pow.f64"),
+	    cstr("__intrinsic_pow_f64"),
+	    cstr("exp.f32"),
+	    cstr("__intrinsic_exp_f32"),
+	    cstr("exp.f64"),
+	    cstr("__intrinsic_exp_f64"),
+	    cstr("log.f32"),
+	    cstr("__intrinsic_log_f32"),
+	    cstr("log.f64"),
+	    cstr("__intrinsic_log_f64"),
 
-        cstr("log2.f32"), cstr("__intrinsic_log2_f32"),
-        cstr("log2.f64"), cstr("__intrinsic_log2_f64"),
-        cstr("sqrt.f32"), cstr("__intrinsic_sqrt_f32"),
-        cstr("sqrt.f64"), cstr("__intrinsic_sqrt_f64"),
-        cstr("ceil.f32"), cstr("__intrinsic_ceil_f32"),
-        cstr("ceil.f64"), cstr("__intrinsic_ceil_f64"),
+	    cstr("log2.f32"),
+	    cstr("__intrinsic_log2_f32"),
+	    cstr("log2.f64"),
+	    cstr("__intrinsic_log2_f64"),
+	    cstr("sqrt.f32"),
+	    cstr("__intrinsic_sqrt_f32"),
+	    cstr("sqrt.f64"),
+	    cstr("__intrinsic_sqrt_f64"),
+	    cstr("ceil.f32"),
+	    cstr("__intrinsic_ceil_f32"),
+	    cstr("ceil.f64"),
+	    cstr("__intrinsic_ceil_f64"),
 
-        cstr("round.f32"), cstr("__intrinsic_round_f32"),
-        cstr("round.f64"), cstr("__intrinsic_round_f64"),
-        cstr("floor.f32"), cstr("__intrinsic_floor_f32"),
-        cstr("floor.f64"), cstr("__intrinsic_floor_f64"),
-        cstr("log10.f32"), cstr("__intrinsic_log10_f32"),
-        cstr("log10.f64"), cstr("__intrinsic_log10_f64"),
-        cstr("trunc.f32"), cstr("__intrinsic_trunc_f32"),
-        cstr("trunc.f64"), cstr("__intrinsic_trunc_f64"),
-    };
+	    cstr("round.f32"),
+	    cstr("__intrinsic_round_f32"),
+	    cstr("round.f64"),
+	    cstr("__intrinsic_round_f64"),
+	    cstr("floor.f32"),
+	    cstr("__intrinsic_floor_f32"),
+	    cstr("floor.f64"),
+	    cstr("__intrinsic_floor_f64"),
+	    cstr("log10.f32"),
+	    cstr("__intrinsic_log10_f32"),
+	    cstr("log10.f64"),
+	    cstr("__intrinsic_log10_f64"),
+	    cstr("trunc.f32"),
+	    cstr("__intrinsic_trunc_f32"),
+	    cstr("trunc.f64"),
+	    cstr("__intrinsic_trunc_f64"),
+	};
 
-	// clang-format on
 	for (usize i = 0; i < static_arrlenu(map); i += 2) {
 		if (str_match(name, map[i])) return map[i + 1];
 	}
@@ -12598,6 +12926,7 @@ str_t get_intrinsic(const str_t name) {
 
 void mir_arenas_init(struct mir_arenas *arenas, u32 owner_thread_index) {
 	const usize instr_size = SIZEOF_MIR_INSTR;
+	blog("Size of MIR instruction: %lluB", instr_size);
 
 	const s32 PREALLOC_BASE = 1024;
 
@@ -12610,6 +12939,7 @@ void mir_arenas_init(struct mir_arenas *arenas, u32 owner_thread_index) {
 	arena_init(&arenas->variant, sizeof(struct mir_variant), alignment_of(struct mir_variant), PREALLOC_BASE * 4, owner_thread_index, NULL);
 	arena_init(&arenas->arg, sizeof(struct mir_arg), alignment_of(struct mir_arg), PREALLOC_BASE * 2, owner_thread_index, NULL);
 	arena_init(&arenas->fn_group, sizeof(struct mir_fn_group), alignment_of(struct mir_fn_group), PREALLOC_BASE, owner_thread_index, NULL);
+	arena_init(&arenas->codegen, sizeof(struct mir_codegen), alignment_of(struct mir_codegen), PREALLOC_BASE, owner_thread_index, NULL);
 }
 
 void mir_arenas_terminate(struct mir_arenas *arenas) {
@@ -12622,18 +12952,18 @@ void mir_arenas_terminate(struct mir_arenas *arenas) {
 	arena_terminate(&arenas->arg);
 	arena_terminate(&arenas->fn_group);
 	arena_terminate(&arenas->fn_generated);
+	arena_terminate(&arenas->codegen);
 }
 
 static void init_context(struct context *ctx, struct assembly *assembly) {
 	memset(ctx, 0, sizeof(struct context));
-	ctx->assembly                        = assembly;
-	ctx->debug_mode                      = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
-	ctx->builtin_types                   = &assembly->builtin_types;
-	ctx->vm                              = &assembly->vm;
-	ctx->mir                             = &assembly->mir;
-	ctx->analyze                         = &assembly->mir.analyze;
-	ctx->fn_generate.current_scope_layer = SCOPE_DEFAULT_LAYER;
-	ctx->ast.current_defer_stack_index   = -1;
+
+	ctx->assembly      = assembly;
+	ctx->debug_mode    = assembly->target->opt == ASSEMBLY_OPT_DEBUG;
+	ctx->builtin_types = &assembly->builtin_types;
+	ctx->vm            = &assembly->vm;
+	ctx->mir           = &assembly->mir;
+	ctx->analyze       = &assembly->mir.analyze;
 
 	const u32 thread_index = get_worker_index();
 
@@ -12641,10 +12971,12 @@ static void init_context(struct context *ctx, struct assembly *assembly) {
 	ctx->scope_thread_local = &assembly->thread_local_contexts[thread_index].scope_thread_local;
 	ctx->small_array_arena  = &assembly->thread_local_contexts[thread_index].small_array;
 	ctx->string_cache       = &assembly->thread_local_contexts[thread_index].string_cache;
+
+	ctx->codegen                      = duplicate_codegen(ctx, NULL);
+	ctx->codegen->current_scope_layer = SCOPE_DEFAULT_LAYER;
 }
 
 static void terminate_context(struct context *ctx) {
-	ast_free_defer_stack(ctx);
 	sarrfree(&ctx->fn_generate.replacement_queue);
 }
 
@@ -12740,7 +13072,7 @@ void mir_init(struct assembly *assembly) {
 	mtx_init(&mir->analyze.stack_lock, mtx_plain);
 
 	const u32 thread_index     = get_worker_index();
-	mir->analyze.unnamed_entry = scope_create_entry(&assembly->thread_local_contexts[thread_index].scope_thread_local, SCOPE_ENTRY_UNNAMED, NULL, NULL, true);
+	mir->analyze.unnamed_entry = scope_create_entry(&assembly->thread_local_contexts[thread_index].scope_thread_local, .kind = SCOPE_ENTRY_UNNAMED, .is_builtin = true);
 
 	mtx_init(&mir->type_cache_lock, mtx_recursive);
 	spl_init(&mir->global_instrs_lock);
@@ -12829,6 +13161,12 @@ void mir_analyze_run(struct assembly *assembly) {
 
 DONE:
 	batomic_fetch_add_s32(&assembly->stats.mir_analyze_ms, runtime_measure_end(mir_analyze));
+#if BL_DEBUG_ENABLE
+	// Emit mir in debug mode even in case compilation failed.
+	if (assembly->target->emit_mir && builder.errorc) {
+		mir_writer_run(assembly);
+	}
+#endif
 
 	if (!builder.options->do_cleanup_when_done) return_zone();
 	current_context = NULL;

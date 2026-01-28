@@ -895,7 +895,7 @@ enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *r
 	bassert(entry);
 	switch (entry->kind) {
 	case SCOPE_ENTRY_VAR: {
-		struct mir_var *var = entry->data.var;
+		struct mir_var *var = entry->as.var;
 		if (isflag(var->iflags, MIR_VAR_GLOBAL)) {
 			ref->base.llvm_value = emit_global_var_proto(ctx, var);
 		} else {
@@ -904,7 +904,7 @@ enum state emit_instr_decl_ref(struct context *ctx, struct mir_instr_decl_ref *r
 		break;
 	}
 	case SCOPE_ENTRY_FN: {
-		ref->base.llvm_value = emit_fn_proto(ctx, entry->data.fn, true);
+		ref->base.llvm_value = emit_fn_proto(ctx, entry->as.fn, true);
 		break;
 	}
 	default:
@@ -1809,7 +1809,7 @@ enum state emit_instr_member_ptr(struct context *ctx, struct mir_instr_member_pt
 
 	if (member_ptr->builtin_id == BUILTIN_ID_NONE) {
 		bassert(member_ptr->scope_entry->kind == SCOPE_ENTRY_MEMBER);
-		struct mir_member *member = member_ptr->scope_entry->data.member;
+		struct mir_member *member = member_ptr->scope_entry->as.member;
 		bassert(member);
 
 		if (member->is_parent_union) {
@@ -2319,7 +2319,7 @@ static inline LLVMValueRef
 insert_easgm_tmp(struct context *ctx, struct mir_instr_call *call, struct mir_type *type) {
 	LLVMBasicBlockRef llvm_prev_block = LLVMGetInsertBlock(ctx->llvm_builder);
 	LLVMBasicBlockRef llvm_entry_block =
-	    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->first_block->base.llvm_value);
+	    LLVMValueAsBasicBlock(call->base.owner_block->owner_fn->entry_block->base.llvm_value);
 	if (LLVMGetLastInstruction(llvm_entry_block)) {
 		LLVMPositionBuilderBefore(ctx->llvm_builder, LLVMGetLastInstruction(llvm_entry_block));
 	} else {
@@ -2931,7 +2931,7 @@ enum state emit_instr_block(struct context *ctx, struct mir_instr_block *block) 
 		LLVMPositionBuilderAtEnd(ctx->llvm_builder, llvm_block);
 
 		// gen allocas fist in entry block!!!
-		if (fn->first_block == block) {
+		if (fn->entry_block == block) {
 			emit_allocas(ctx, fn);
 		}
 	} else {
@@ -2987,7 +2987,7 @@ enum state emit_instr_fn_proto(struct context *ctx, struct mir_instr_fn_proto *f
 	if (isnotflag(fn->flags, FLAG_EXTERN) && isnotflag(fn->flags, FLAG_INTRINSIC)) {
 		if (ctx->generate_debug_info) emit_DI_fn(ctx, fn);
 		// Generate all blocks in the function body.
-		struct mir_instr_block *block = fn->first_block;
+		struct mir_instr_block *block = fn->entry_block;
 		while (block) {
 			bassert(block->base.kind == MIR_INSTR_BLOCK);
 			if (!block->is_unreachable && (block->base.ref_count == MIR_NO_REF_COUNTING || block->base.ref_count > 0)) {

@@ -38,6 +38,9 @@ master
 - Build pipeline now use regular main function as an entry point.
 - Fix volatile type propagation where explicit cast was required for non-s32 number literals in binop.
 - Fix crash on missing declaration value.
+- Complete revamp of static if implementation.
+  - Static if now does not introduce a new scope.
+  - Fixed issues when static if contains continue or break.
 
 [Modules]
 
@@ -79,6 +82,7 @@ std/sync:
 
 [Documentation]
 - Add documentation for comptime call.
+- Add documentation for static if.
 
 [Deprecated]
 

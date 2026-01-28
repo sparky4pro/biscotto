@@ -39,7 +39,7 @@ static s32 worker(void *args) {
 
 	while (true) {
 		mtx_lock(&jobs_mutex);
-		while (arrlenu(jobs) == 0 && !should_exit)
+		while ((arrlenu(jobs) == 0 || is_single_thread) && !should_exit)
 			cnd_wait(&jobs_cond, &jobs_mutex);
 
 		if (should_exit)
@@ -156,6 +156,10 @@ void set_single_thread_mode(const bool is_single) {
 	is_single_thread = is_single;
 }
 
+bool is_in_single_thread_mode(void) {
+	return is_single_thread;
+}
+
 u32 get_thread_count(void) {
 	if (is_single_thread) return 1;
 	return thread_count;
@@ -181,5 +185,7 @@ void terminate_thread_local_storage(void) {
 }
 
 u32 get_worker_index(void) {
+	if (is_single_thread) return 0;
 	return worker_index;
 }
+

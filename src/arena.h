@@ -19,6 +19,9 @@ struct arena {
 	u32                 owner_thread_index;
 
 	arena_elem_dtor_t elem_dtor;
+#if BL_ASSERT_ENABLE
+	bool is_initialized;
+#endif
 };
 
 void arena_init(struct arena     *arena,

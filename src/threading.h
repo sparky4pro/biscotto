@@ -43,6 +43,7 @@ void submit_job(job_fn_t fn, struct job_context *ctx);
 
 // Keeps all threads running, but process future jobs only on the main thread.
 void set_single_thread_mode(const bool is_single);
+bool is_in_single_thread_mode(void);
 
 // Returns 1 in single-thread mode and do not include main thread in multi-thread mode (main
 // thread is just waiting for the rest to complete...).
