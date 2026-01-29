@@ -43,6 +43,7 @@ master
   - Fixed issues when static if contains continue or break.
 - Fix broken type checks on volatile int types.
 - Add stdio source input support for the compiler.
+- Add support for compiler intrinsic calls at compile-time.
 
 [Modules]
 

@@ -1,4 +1,6 @@
 #scope_private
+math :: #import "std/math";
+
 simple_comptime :: fn () #test {
 	_1 :: fn (expect_comptime: bool) {
 		if expect_comptime {
@@ -10,10 +12,16 @@ simple_comptime :: fn () #test {
 
 	_1(false);
 	_1#(true);
-};
+}
 
 direct_call_comptime :: fn () #test {
 	fn () {
 		test_true(IS_COMPTIME);
 	} #();
-};
+}
+
+intrinsics_call :: fn () #test {
+	X :: math.round#(1.12f);
+	test_eq(X, 1.f);
+}
+

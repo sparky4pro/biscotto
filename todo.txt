@@ -4,10 +4,6 @@ Function literals in group does not accept hash directives. Flags are now assign
 @bug 5
 The auto cast is not properly evaluated in compile time. Evaluation is skipped because we do not have the type yet.
 
-@bug 3
-Intrinsic functions (lot of math stuff) cannot be directly called in compile time using #() call.
-
-
 @bug 5
 Direct access to type struct info members crashes the compiler.
 
@@ -42,11 +38,6 @@ Introduce #nocomptime directive to mark functions which should never be executed
 @bug 2
 This is not parsed properly: 'bar() catch;'
 
-@bug 3
-Missing error report on:
-
-	ptr += 1;
-
 @bug 5
 New comptime local value setup cause issues with setting struct members via pointer.
 
@@ -57,13 +48,6 @@ rd.kind     = LspRequestKind.INITIALIZE;
 @compiler 4
 Mixed functions are generated on each call, we need some caching based on passed comptime values.
 
-
-@bug 4
-Volatile type propagation does not work in case of conditional breaks:
-
-	if 1 == 1 {
-		print("Hello!\n");
-	}
 
 $
 
@@ -91,3 +75,18 @@ Enum type infer does not work in binary expressions?
 
 if mode != .NONE {
 }
+
+@bug 4
+Volatile type propagation does not work in case of conditional breaks:
+
+	if 1 == 1 {
+		print("Hello!\n");
+	}
+
+@bug 3
+Missing error report on:
+
+	ptr += 1;
+
+@bug 3
+Intrinsic functions (lot of math stuff) cannot be directly called in compile time using #() call.

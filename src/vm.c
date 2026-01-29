@@ -1078,11 +1078,14 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
                                       struct mir_fn          *fn,
                                       struct mir_instr_call  *optional_call,
                                       const bool              resume) {
+	enum vm_interp_state state = VM_INTERP_PASSED;
+	bassert(!isflag(fn->flags, FLAG_EXTERN) && !isflag(fn->flags, FLAG_INTRINSIC));
+
 	const struct mir_instr *fn_terminal_instr = &fn->terminal_instr->base;
 	// Reset eventual previous failed state.
-	vm->aborted                    = false;
-	const u64 prev_is_comptime_run = vm_override_var(vm, vm->assembly->is_comptime_run, true);
+	vm->aborted = false;
 
+	const u64 prev_is_comptime_run = vm_override_var(vm, vm->assembly->is_comptime_run, true);
 	if (!resume) {
 		struct mir_instr *fn_entry_instr = fn->entry_block->entry_instr;
 		// push terminal frame on stack
@@ -1092,9 +1095,9 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 		// setup entry instruction
 		set_pc(vm, fn_entry_instr);
 	}
+
 	// iterate over entry block of executable
-	struct mir_instr    *instr, *prev;
-	enum vm_interp_state state = VM_INTERP_PASSED;
+	struct mir_instr *instr, *prev;
 	while (true) {
 		instr = get_pc(vm);
 		prev  = instr;
@@ -1112,6 +1115,7 @@ enum vm_interp_state execute_function(struct virtual_machine *vm,
 		// Stack head can be changed by br instructions.
 		if (!get_pc(vm) || get_pc(vm) == prev) set_pc(vm, instr->next);
 	}
+
 	switch (state) {
 	case VM_INTERP_ABORT:
 		// @Incomplete: endless loop?
@@ -2649,10 +2653,10 @@ enum vm_interp_state vm_execute_comptime_call(struct virtual_machine *vm, struct
 	const u64 prev_is_comptime = vm_override_var(vm, assembly->is_comptime, true);
 
 	enum vm_interp_state state;
-	if (!isflag(fn->flags, FLAG_EXTERN)) {
-		state = execute_function(vm, fn, call, snapshot.resume);
-	} else {
+	if (isflag(fn->flags, FLAG_EXTERN) || isflag(fn->flags, FLAG_INTRINSIC)) {
 		state = interp_instr_call(vm, call);
+	} else {
+		state = execute_function(vm, fn, call, snapshot.resume);
 	}
 
 	vm_override_var(vm, assembly->is_comptime, prev_is_comptime);
