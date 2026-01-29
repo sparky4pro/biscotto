@@ -81,7 +81,8 @@ enum { BL_RED,
 #define runtime_measure_begin(name) f64 __##name = get_tick_ms()
 #define runtime_measure_end(name)   ((s32)(get_tick_ms() - __##name))
 
-#define LIB_NAME_MAX 256
+#define LIB_NAME_MAX   256
+#define STDIN_FILEPATH "<stdin>"
 
 // Return size of of static array.
 #define static_arrlenu(A) (sizeof(A) / sizeof((A)[0]))
@@ -134,40 +135,40 @@ enum { BL_RED,
 #define _ONE_OF_N( \
     _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, NAME, ...) NAME
 
-#define is_one_of(x, ...)     \
+#define is_one_of(x, ...) \
 	_ONE_OF_N(__VA_ARGS__, \
-	          _ONE_OF10,   \
-	          _ONE_OF9,    \
-	          _ONE_OF8,    \
-	          _ONE_OF7,    \
-	          _ONE_OF6,    \
-	          _ONE_OF5,    \
-	          _ONE_OF4,    \
-	          _ONE_OF3,    \
-	          _ONE_OF2,    \
-	          _ONE_OF1)    \
+	          _ONE_OF10, \
+	          _ONE_OF9, \
+	          _ONE_OF8, \
+	          _ONE_OF7, \
+	          _ONE_OF6, \
+	          _ONE_OF5, \
+	          _ONE_OF4, \
+	          _ONE_OF3, \
+	          _ONE_OF2, \
+	          _ONE_OF1) \
 	(x, __VA_ARGS__)
 
 // =================================================================================================
 // String View
 // =================================================================================================
 
-#define make_str(p, l)                      \
-	(str_t) {                               \
+#define make_str(p, l) \
+	(str_t) { \
 		.ptr = (char *)(p), .len = (s32)(l) \
 	}
 
 #define cstr(P) \
-	(str_t){    \
+	(str_t){ \
 	    .ptr = (P), .len = (sizeof(P) / sizeof((P)[0])) - 1}
 
-#define make_str_from_c(p)                                \
-	(str_t) {                                             \
+#define make_str_from_c(p) \
+	(str_t) { \
 		.ptr = (char *)(p), .len = (s32)strlen((char *)p) \
 	}
 
 #define str_empty \
-	(str_t){      \
+	(str_t){ \
 	    0}
 
 // Non-owning string representation with cached size. Note that the string might not be zero
@@ -245,18 +246,18 @@ static inline const char *str_buf_to_c(const str_buf_t b) {
 #define str_to_c(B, S) str_dup_if_not_terminated((B), (S).ptr, (S).len)
 
 // This way we can append another string buffer or view without any casting.
-#define str_buf_append(B, S) _Generic((S),           \
+#define str_buf_append(B, S) _Generic((S), \
 	str_buf_t: _str_buf_append(B, (S).ptr, (S).len), \
 	str_t: _str_buf_append(B, (S).ptr, (S).len))
 
 #define str_buf_append_char(B, C) _str_buf_append(B, &(C), 1)
 
-#define str_buf_dup(S) _Generic((S),           \
+#define str_buf_dup(S) _Generic((S), \
 	str_buf_t: _str_buf_dup((S).ptr, (S).len), \
 	str_t: _str_buf_dup((S).ptr, (S).len))
 
-#define str_buf_view(B)                \
-	(str_t) {                          \
+#define str_buf_view(B) \
+	(str_t) { \
 		.len = (B).len, .ptr = (B).ptr \
 	}
 
@@ -272,16 +273,16 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args);
 #define hash_table(T) T *
 
 #define queue_t(T) \
-	struct {       \
-		T  *q[2];  \
-		s64 i;     \
-		s32 qi;    \
+	struct { \
+		T  *q[2]; \
+		s64 i; \
+		s32 qi; \
 	}
 
 #define _qcurrent(Q) ((Q)->q[(Q)->qi])
 #define _qother(Q)   ((Q)->q[(Q)->qi ^ 1])
-#define qmaybeswap(Q)                                                                       \
-	((Q)->i >= arrlen(_qcurrent(Q))                                                         \
+#define qmaybeswap(Q) \
+	((Q)->i >= arrlen(_qcurrent(Q)) \
 	     ? (arrsetlen(_qcurrent(Q), 0), (Q)->qi ^= 1, (Q)->i = 0, arrlen(_qcurrent(Q)) > 0) \
 	     : (true))
 #define qfree(Q)         (arrfree((Q)->q[0]), arrfree((Q)->q[1]))
@@ -292,13 +293,13 @@ s32 bvsnprint(char *buf, s32 buf_len, const char *fmt, va_list args);
 // =================================================================================================
 // Small Array
 // =================================================================================================
-#define sarr_t(T, C)    \
-	struct {            \
-		u32 len, cap;   \
-		union {         \
-			T *_data;   \
+#define sarr_t(T, C) \
+	struct { \
+		u32 len, cap; \
+		union { \
+			T *_data; \
 			T  _buf[C]; \
-		};              \
+		}; \
 	}
 
 typedef sarr_t(u8, 1) sarr_any_t;
@@ -307,7 +308,7 @@ typedef sarr_t(u8, 1) sarr_any_t;
 	{.len = 0, .cap = 0}
 
 #define sarradd(A) sarraddn(A, 1)
-#define sarraddn(A, N)                                                                     \
+#define sarraddn(A, N) \
 	(sarradd_impl((A), sizeof((A)->_buf[0]), sizeof((A)->_buf) / sizeof((A)->_buf[0]), N), \
 	 &sarrpeek(A, sarrlenu(A) - N))
 #define sarrput(A, V)       (*sarradd(A) = (V))
@@ -319,11 +320,11 @@ typedef sarr_t(u8, 1) sarr_any_t;
 #define sarrpeekor(A, I, D) ((I) < sarrlenu(A) ? sarrdata(A)[I] : (D))
 #define sarrclear(A)        ((A)->len = 0)
 #define sarrfree(A)         ((A)->cap ? bfree((A)->_data) : (void)0, (A)->len = 0, (A)->cap = 0)
-#define sarrsetlen(A, L)                       \
-	{                                          \
+#define sarrsetlen(A, L) \
+	{ \
 		const s64 d = ((s64)(L)) - sarrlen(A); \
-		if (d) sarraddn(A, d);                 \
-	}                                          \
+		if (d) sarraddn(A, d); \
+	} \
 	(void)0
 
 void sarradd_impl(void *ptr, usize elem_size, usize static_elem_count, usize new_elem_count);
@@ -446,35 +447,35 @@ char *str_dup_if_not_terminated(str_buf_t *tmp, char *ptr, const s32 len);
 
 #define next_aligned2(ptr, a) (usize) next_aligned((void *)(usize)(ptr), (a))
 
-#define win_path_to_unix(B) _Generic((B),           \
+#define win_path_to_unix(B) _Generic((B), \
 	str_buf_t: _win_path_to_unix((B).ptr, (B).len), \
 	str_t: _win_path_to_unix((B).ptr, (B).len))
 
-#define unix_path_to_win(B) _Generic((B),           \
+#define unix_path_to_win(B) _Generic((B), \
 	str_buf_t: _unix_path_to_win((B).ptr, (B).len), \
 	str_t: _unix_path_to_win((B).ptr, (B).len))
 
-#define file_exists(B) _Generic((B),           \
+#define file_exists(B) _Generic((B), \
 	str_buf_t: _file_exists((B).ptr, (B).len), \
 	str_t: _file_exists((B).ptr, (B).len))
 
-#define dir_exists(B) _Generic((B),           \
+#define dir_exists(B) _Generic((B), \
 	str_buf_t: _dir_exists((B).ptr, (B).len), \
 	str_t: _dir_exists((B).ptr, (B).len))
 
-#define brealpath(P, B) _Generic((P),           \
+#define brealpath(P, B) _Generic((P), \
 	str_buf_t: _brealpath((P).ptr, (P).len, B), \
 	str_t: _brealpath((P).ptr, (P).len, B))
 
-#define create_dir(B) _Generic((B),           \
+#define create_dir(B) _Generic((B), \
 	str_buf_t: _create_dir((B).ptr, (B).len), \
 	str_t: _create_dir((B).ptr, (B).len))
 
-#define get_dir_from_filepath(B) _Generic((B),           \
+#define get_dir_from_filepath(B) _Generic((B), \
 	str_buf_t: _get_dir_from_filepath((B).ptr, (B).len), \
 	str_t: _get_dir_from_filepath((B).ptr, (B).len))
 
-#define get_filename_from_filepath(B) _Generic((B),           \
+#define get_filename_from_filepath(B) _Generic((B), \
 	str_buf_t: _get_filename_from_filepath((B).ptr, (B).len), \
 	str_t: _get_filename_from_filepath((B).ptr, (B).len))
 

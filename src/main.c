@@ -282,7 +282,7 @@ int main(s32 argc, char *argv[]) {
 	MAIN_THREAD = thrd_current();
 
 #define EXIT(_state) \
-	state = _state;  \
+	state = _state; \
 	goto RELEASE;
 
 #if BL_DEBUG_ENABLE
@@ -311,16 +311,17 @@ int main(s32 argc, char *argv[]) {
 	char *user_conf_filepath     = NULL;
 	bool  has_input_files        = false;
 
-#define ID_BUILD                 1
-#define ID_RUN                   2
-#define ID_DOC                   3
-#define ID_SHARED                4
-#define ID_VMDBG_BREAK_ON        5
-#define ID_RELEASE               6
-#define ID_SILENT_RUN            7
-#define ID_INIT_PROJECT          8
-#define ID_DUMP_SCOPES_PARENTING 9
-#define ID_DUMP_SCOPES_INJECTION 10
+#define ID_BUILD                  1
+#define ID_RUN                    2
+#define ID_DOC                    3
+#define ID_SHARED                 4
+#define ID_VMDBG_BREAK_ON         5
+#define ID_RELEASE                6
+#define ID_SILENT_RUN             7
+#define ID_INIT_PROJECT           8
+#define ID_DUMP_SCOPES_PARENTING  9
+#define ID_DUMP_SCOPES_INJECTION  10
+#define ID_READ_SOURCE_FROM_STDIN 11
 
 	BL_OBSOLETE_SINCE(0, 14, "-silent-run");
 	BL_OBSOLETE_SINCE(0, 14, "--run-tests");
@@ -635,6 +636,11 @@ int main(s32 argc, char *argv[]) {
 	        .kind       = ENUM,
 	        .property.n = (s32 *)&opt.app.do_cleanup_when_done,
 	    },
+	    {
+	        .name = "-",
+	        .help = "Read source code from standard input instead of a file. When used with '-run', this argument must come after '-run'.",
+	        .id   = ID_READ_SOURCE_FROM_STDIN,
+	    },
 	    {0},
 	};
 
@@ -671,7 +677,7 @@ int main(s32 argc, char *argv[]) {
 			opt.target->run     = true;
 			opt.target->no_llvm = true;
 			no_finish_msg       = true;
-			if (index + 1 == argc || argv[index + 1][0] == '-') {
+			if (index + 1 == argc || (strlen(argv[index + 1]) > 1 && argv[index + 1][0] == '-')) {
 				builder_error("Expected file name after '-run' flag.");
 				EXIT(EXIT_FAILURE);
 			}
@@ -742,6 +748,10 @@ int main(s32 argc, char *argv[]) {
 			builder_info("Try 'blc -build'.");
 
 			EXIT(EXIT_SUCCESS);
+		case ID_READ_SOURCE_FROM_STDIN:
+			target_add_file(opt.target, STDIN_FILEPATH);
+			has_input_files = true;
+			break;
 		default:
 			if (positional) {
 				target_add_file(opt.target, positional);
@@ -822,7 +832,6 @@ SKIP:
 	if (!target_init_default_triple(&opt.target->triple)) {
 		exit(ERR_UNSUPPORTED_TARGET);
 	}
-	// [travis] Is this correct?
 	opt.target->reg_split = opt.target->triple.env != ENV_msvc;
 
 	if (user_working_directory) {

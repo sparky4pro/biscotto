@@ -1,0 +1,6 @@
+// @ERR_INVALID_TYPE@
+main :: fn () s32 {
+	v: enum {A; B;};
+	v = 1;
+	return 0;
+}

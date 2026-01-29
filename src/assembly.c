@@ -592,12 +592,16 @@ void assembly_add_unit(struct assembly *assembly, const str_t filepath, struct t
 	bassert(parent_scope);
 	struct unit *unit = NULL;
 
-	str_buf_t    tmp_fullpath = get_tmp_str();
-	struct unit *parent_unit  = load_from ? load_from->location.unit : NULL;
-	if (!search_source_file(filepath, parent_unit ? parent_unit->dirpath : str_empty, &tmp_fullpath)) {
-		put_tmp_str(tmp_fullpath);
-		builder_msg(MSG_ERR, ERR_FILE_NOT_FOUND, TOKEN_OPTIONAL_LOCATION(load_from), CARET_WORD, "File not found '" STR_FMT "'.", STR_ARG(filepath));
-		return_zone();
+	str_buf_t tmp_fullpath = get_tmp_str();
+	if (!str_match(filepath, cstr(STDIN_FILEPATH))) {
+		struct unit *parent_unit = load_from ? load_from->location.unit : NULL;
+		if (!search_source_file(filepath, parent_unit ? parent_unit->dirpath : str_empty, &tmp_fullpath)) {
+			put_tmp_str(tmp_fullpath);
+			builder_msg(MSG_ERR, ERR_FILE_NOT_FOUND, TOKEN_OPTIONAL_LOCATION(load_from), CARET_WORD, "File not found '" STR_FMT "'.", STR_ARG(filepath));
+			return_zone();
+		}
+	} else {
+		str_buf_append(&tmp_fullpath, filepath);
 	}
 
 	const hash_t hash = unit_get_hash(str_buf_view(tmp_fullpath));

@@ -41,6 +41,8 @@ master
 - Complete revamp of static if implementation.
   - Static if now does not introduce a new scope.
   - Fixed issues when static if contains continue or break.
+- Fix broken type checks on volatile int types.
+- Add stdio source input support for the compiler.
 
 [Modules]
 

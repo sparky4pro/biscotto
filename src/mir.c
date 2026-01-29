@@ -6646,7 +6646,6 @@ static enum stage_state analyze_stage_check_catch(struct context *ctx, struct mi
 struct result analyze_instr_cond_br(struct context *ctx, struct mir_instr_cond_br *br) {
 	zone();
 	bassert(br->cond && br->then_block && br->else_block);
-	bassert(br->cond->state == MIR_IS_COMPLETE);
 
 	// 2025-02-19: Because the catch error feature does not have any representation in MIR and is purely syntax-sugar we should
 	//             use this custom analyze configuration to provide better errors for user. We expect the break expression to
@@ -9429,12 +9428,11 @@ static struct result analyze_propagate_volatile_type(struct context *ctx, struct
 		}
 	}
 
-	if (!type && result.state == ANALYZE_PASSED) {
+	struct mir_type *root_type = root_instr->value.type;
+	if (!type && root_type->kind == MIR_TYPE_INT && result.state == ANALYZE_PASSED) {
 		// @Note 2025-11-24: Since negative literals are parsed as unop(N) we cannot represent correctly negative signed type limits.
 		//                   Thus, here we try to find minimum type able to hold negative minimum values in case target type was not
 		//                   requested explicitly.
-		struct mir_type *root_type = root_instr->value.type;
-		bassert(root_type && root_type->kind == MIR_TYPE_INT);
 		if (root_type->data.integer.is_signed) {
 			bassert(mir_is_comptime(root_instr));
 			switch (root_type->store_size_bytes) {
@@ -9483,9 +9481,7 @@ enum stage_state analyze_stage_propagate_volatile_type(struct context *ctx, stru
 	}
 
 	struct result r = analyze_propagate_volatile_type(ctx, *input, propagate_type);
-	if (!propagate_type) return ANALYZE_STAGE_CONTINUE;
-
-	if (r.state == ANALYZE_PASSED) return ANALYZE_STAGE_BREAK;
+	if (r.state == ANALYZE_PASSED) return ANALYZE_STAGE_CONTINUE;
 	return ANALYZE_STAGE_FAILED;
 }
 
@@ -12926,7 +12922,7 @@ str_t get_intrinsic(const str_t name) {
 
 void mir_arenas_init(struct mir_arenas *arenas, u32 owner_thread_index) {
 	const usize instr_size = SIZEOF_MIR_INSTR;
-	blog("Size of MIR instruction: %lluB", instr_size);
+	// blog("Size of MIR instruction: %lluB", instr_size);
 
 	const s32 PREALLOC_BASE = 1024;
 

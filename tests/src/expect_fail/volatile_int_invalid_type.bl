@@ -1,0 +1,5 @@
+// @ERR_INVALID_TYPE@
+main :: fn () s32 {
+	v : []s32 : 1 + 1;
+	return 0;
+}

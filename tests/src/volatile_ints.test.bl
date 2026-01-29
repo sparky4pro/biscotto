@@ -75,7 +75,17 @@ binop_propagation_2 :: fn () #test {
 	}
 }
 
+binop_propagation_3 :: fn () #test {
+	v := 1 + 1;
+	test_eq(v, 2);
+}
+
 ptr_type :: fn () #test {
-	v : *u8 : -1;
+	v :: cast(*u8)-1;
 	test_eq(cast(u64)v, 0xFFFFFFFFFFFFFFFF);
+}
+
+cast_to_bool :: fn () #test {
+	test_true(1 == 1);
+	test_false(1 == (1 + 2));
 }

@@ -106,9 +106,9 @@ test_enum_variant_name :: fn () #test {
 
 test_enum_variant_value :: fn () #test {
 	enm :: enum { X; A = 10; B = 20; };
-	test_eq(enum_variant_value(enm, 0),  0);
-	test_eq(enum_variant_value(enm, 1), 10);
-	test_eq(enum_variant_value(enm, 2), 20);
+	test_eq(enum_variant_value(enm, 0), auto 0);
+	test_eq(enum_variant_value(enm, 1), auto 10);
+	test_eq(enum_variant_value(enm, 2), auto 20);
 }
 
 test_struct_member_count :: fn () #test {

@@ -256,7 +256,7 @@ struct assembly {
 
 	// Provide information whether application run in compile time or not.
 	struct mir_var *is_comptime_run;
-	
+
 	// This one is similar to is_comptime_run but is true only in case we're in compile-time
 	// evaluation, when comptime function is called during compilation.
 	struct mir_var *is_comptime;
