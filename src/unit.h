@@ -10,6 +10,11 @@
 struct token;
 struct assembly;
 
+struct unit_docs_entry {
+	u64   hash;
+	str_t text;
+};
+
 struct unit {
 	hash_t        hash;
 	struct tokens tokens;
@@ -25,7 +30,12 @@ struct unit {
 	char           *src;
 	struct token   *loaded_from;
 	LLVMMetadataRef llvm_file_meta;
-	str_buf_t       file_docs_cache;
+
+	// @Note 2026-01-30: AST documentation (generated when -doc argument is passed to the compiler) is decoupled
+	//                   from AST nodes and stored in separate hash table. Thus we don't need to keep pointer
+	//                   to documentation in every AST node. Mapping is: AST Node ID -> documentation string.
+	str_buf_t global_docs_cache;
+	hash_table(struct unit_docs_entry) docs;
 };
 
 // The inject_to_scope is supposed to be valid scope (parent scope of the #load directive or global scope).

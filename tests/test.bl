@@ -1,9 +1,19 @@
 #import "std/print"
 
+//! COOL
+
+/// Hello
+foo :: fn (v: bar()) (s32, s32) {
+	return 1, 2;
+}
+
+bar :: fn () type #comptime {
+	return s32;
+}
+
 main :: fn () s32 {
 	print("----------------------------------------\n");
 	print("DONE!\n");
 	print("----------------------------------------\n");
-	c::;
 	return 0;
 }

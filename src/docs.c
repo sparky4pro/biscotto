@@ -9,21 +9,21 @@
 
 #define CODE_BLOCK_BEGIN(stream) fprintf(stream, "\n```bl\n")
 #define CODE_BLOCK_END(stream)   fprintf(stream, "\n```\n\n")
-#define CODE_INDENTED(stream, indentation)                               \
-	if (indentation) {                                                   \
+#define CODE_INDENTED(stream, indentation) \
+	if (indentation) { \
 		fprintf(stream, "\n%*c", INDENTATION_CHARS *(indentation), ' '); \
-	} else {                                                             \
-		fprintf(stream, "\n");                                           \
-	}                                                                    \
+	} else { \
+		fprintf(stream, "\n"); \
+	} \
 	(void)0
 
-#define PUSH_IS_INLINE(ctx)                      \
+#define PUSH_IS_INLINE(ctx) \
 	const bool _prev_is_inline = ctx->is_inline; \
 	ctx->is_inline             = true
 
 #define POP_IS_INLINE(ctx) ctx->is_inline = _prev_is_inline
 
-#define PUSH_IS_MULTI_RETURN(ctx)                  \
+#define PUSH_IS_MULTI_RETURN(ctx) \
 	const bool _prev_is_mr = ctx->is_multi_return; \
 	ctx->is_multi_return   = true
 
@@ -75,7 +75,8 @@ void doc_decl_entity(struct context *ctx, struct ast *decl) {
 	struct ast *type  = decl->data.decl.type;
 	struct ast *value = decl->data.decl_entity.value;
 	if (!ident) return;
-	const str_t text       = decl->docs;
+
+	const str_t text       = ast_get_docs(ctx->unit, decl);
 	const str_t name       = ident->data.ident.id.str;
 	const bool  is_mutable = decl->data.decl_entity.mut;
 
@@ -159,8 +160,9 @@ void doc_decl_variant(struct context *ctx, struct ast *decl) {
 	if (ident) {
 		const str_t name = ident->data.ident.id.str;
 		fprintf(ctx->stream, STR_FMT, STR_ARG(name));
-		if (decl->docs.len) {
-			str_buf_append_fmt(&ctx->section_variants, "* `{str}` - {str}\n", name, decl->docs);
+		str_t text = ast_get_docs(ctx->unit, decl);
+		if (text.len) {
+			str_buf_append_fmt(&ctx->section_variants, "* `{str}` - {str}\n", name, text);
 		}
 	}
 	if (value && value->kind == AST_EXPR_LIT_INT) {
@@ -175,9 +177,9 @@ void doc_decl_member(struct context *ctx, struct ast *decl) {
 	if (ident) {
 		const str_t name = ident->data.ident.id.str;
 		fprintf(ctx->stream, STR_FMT ": ", STR_ARG(name));
-
-		if (decl->docs.len) {
-			str_buf_append_fmt(&ctx->section_members, "* `{str}` - {str}\n", name, decl->docs);
+		str_t text = ast_get_docs(ctx->unit, decl);
+		if (text.len) {
+			str_buf_append_fmt(&ctx->section_members, "* `{str}` - {str}\n", name, text);
 		}
 	}
 	doc(ctx, type);
@@ -401,6 +403,21 @@ void doc(struct context *ctx, struct ast *node) {
 	case AST_EXPR_NULL:
 		fprintf(ctx->stream, "null");
 		break;
+	case AST_EXPR_CALL: {
+		ast_nodes_t *ast_args = node->data.expr_call.args;
+		doc(ctx, node->data.expr_call.ref);
+		fprintf(ctx->stream, "(");
+		if (ast_args) {
+			const s64   argc = sarrlenu(ast_args);
+			struct ast *ast_arg;
+			for (usize i = argc; i-- > 0;) {
+				ast_arg = sarrpeek(ast_args, i);
+				doc(ctx, ast_arg);
+			}
+		}
+		fprintf(ctx->stream, ")");
+		break;
+	}
 	case AST_CALL_LOC:
 		fprintf(ctx->stream, "#call_location");
 		break;
@@ -440,9 +457,9 @@ void doc_unit(struct context *ctx, struct unit *unit) {
 	}
 
 	ctx->stream = f;
-	if (unit->ast->docs.len) {
-		const str_t docs = unit->ast->docs;
-		fprintf(f, "" STR_FMT "\n", STR_ARG(docs));
+	str_t text  = ast_get_docs(unit, unit->ast);
+	if (text.len) {
+		fprintf(f, "" STR_FMT "\n", STR_ARG(text));
 	} else {
 		str_buf_t tmp_filename = get_tmp_str();
 		H0(f, str_to_c(&tmp_filename, unit->filename));

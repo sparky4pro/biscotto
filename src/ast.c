@@ -2,6 +2,8 @@
 #include "atomics.h"
 #include "stb_ds.h"
 #include "tokens.h"
+#include "table.h"
+#include "unit.h"
 
 struct ast *
 ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope) {
@@ -211,6 +213,12 @@ const char *ast_binop_to_str(enum binop_kind op) {
 	}
 
 	return "invalid";
+}
+
+str_t ast_get_docs(struct unit *unit, struct ast *node) {
+	const s32 index = tbl_lookup_index(unit->docs, node->id);
+	if (index == -1) return str_empty;
+	return unit->docs[index].text;
 }
 
 const char *ast_unop_to_str(enum unop_kind op) {

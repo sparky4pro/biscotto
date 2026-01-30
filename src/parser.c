@@ -1,6 +1,7 @@
 #include "builder.h"
 #include "table.h"
 #include "tokens_inline_utils.h"
+#include "table.h"
 #include <setjmp.h>
 
 #define report_error(code, tok, pos, format, ...) builder_msg(MSG_ERR, ERR_##code, &(tok)->location, (pos), (format), ##__VA_ARGS__)
@@ -49,13 +50,16 @@ struct context {
 	struct tokens             *tokens;
 	struct string_cache      **string_cache;
 
+	bool process_docs;
+
 	// tmps
 	array(struct scope *) scope_stack;
 	array(struct ast *) decl_stack;
 	array(struct ast *) fn_type_stack;
 	array(struct ast *) block_stack;
-	bool        is_inside_loop;
-	bool        is_inside_expression;
+	bool is_inside_loop;
+	bool is_inside_expression;
+
 	struct ast *current_docs;
 };
 
@@ -182,13 +186,18 @@ static inline bool rq_semicolon_after_decl_entity(struct ast *node) {
 	}
 }
 
-static inline str_t pop_docs(struct context *ctx) {
-	str_t text = str_empty;
-	if (ctx->current_docs) {
-		text              = ctx->current_docs->data.docs.text;
-		ctx->current_docs = NULL;
-	}
-	return text;
+static inline void consume_docs(struct context *ctx, struct ast *consumer_node) {
+	if (!ctx->current_docs) return;
+	bassert(ctx->process_docs);
+
+	bassert(tbl_lookup_index(ctx->unit->docs, consumer_node->id) == -1);
+	struct unit_docs_entry entry = (struct unit_docs_entry){
+	    .hash = consumer_node->id,
+	    .text = ctx->current_docs->data.docs.text,
+	};
+	tbl_insert(ctx->unit->docs, entry);
+
+	ctx->current_docs = NULL;
 }
 
 enum binop_kind sym_to_binop_kind(enum sym sm) {
@@ -280,26 +289,29 @@ struct ast *parse_expr_ref(struct context *ctx) {
 }
 
 bool parse_docs(struct context *ctx) {
+	// @Note 2026-01-30: If assembly does not run in ASSEMBLY_DOCS mode, lexer ignores comments, so there is no
+	//                   additional overhead caused by calling this regularly.
 	struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_DCOMMENT);
 	if (!tok_begin) return false;
 	zone();
-	str_t str_value = get_token_value(ctx, tok_begin).str;
+	str_t text = get_token_value(ctx, tok_begin).str;
 	if (tokens_peek(ctx->tokens)->sym == SYM_DCOMMENT) {
 		str_buf_t tmp = get_tmp_str();
-		str_buf_append_fmt(&tmp, "{str}\n", str_value);
+		str_buf_append_fmt(&tmp, "{str}\n", text);
 
 		struct token *tok;
 		while ((tok = tokens_consume_if(ctx->tokens, SYM_DCOMMENT))) {
-			const str_t str_value = get_token_value(ctx, tok).str;
-			str_buf_append_fmt(&tmp, "{str}\n", str_value);
+			const str_t text = get_token_value(ctx, tok).str;
+			str_buf_append_fmt(&tmp, "{str}\n", text);
 		}
-		str_value = scdup2(ctx->string_cache, tmp);
+		text = scdup2(ctx->string_cache, tmp);
 		put_tmp_str(tmp);
 	}
 
 	struct ast *docs     = ast_create_node(ctx->ast_arena, AST_DOCS, tok_begin, scope_get(ctx));
-	docs->data.docs.text = str_value;
-	ctx->current_docs    = docs;
+	docs->data.docs.text = text;
+
+	ctx->current_docs = docs;
 	return_zone(true);
 }
 
@@ -309,9 +321,9 @@ bool parse_unit_docs(struct context *ctx) {
 	zone();
 	struct token *tok;
 	while ((tok = tokens_consume_if(ctx->tokens, SYM_DGCOMMENT))) {
-		if (ctx->unit->file_docs_cache.len) str_buf_append(&ctx->unit->file_docs_cache, cstr("\n"));
+		if (ctx->unit->global_docs_cache.len) str_buf_append(&ctx->unit->global_docs_cache, cstr("\n"));
 		const str_t str_value = get_token_value(ctx, tok).str;
-		str_buf_append(&ctx->unit->file_docs_cache, str_value);
+		str_buf_append(&ctx->unit->global_docs_cache, str_value);
 	}
 	return_zone(true);
 }
@@ -397,7 +409,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum ha
 		bassert(current_scope);
 		struct ast *load         = ast_create_node(ctx->ast_arena, AST_LOAD, tok_directive, current_scope);
 		load->data.load.filepath = get_token_value(ctx, tok_path).str;
-		if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
+		if (!ctx->process_docs) {
 			assembly_add_unit(ctx->assembly, load->data.load.filepath, tok_path, current_scope, ctx->unit->module);
 		}
 		return_zone(load);
@@ -418,7 +430,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum ha
 		}
 
 		struct ast *import = ast_create_node(ctx->ast_arena, AST_IMPORT, tok_directive, current_scope);
-		if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
+		if (!ctx->process_docs) {
 			struct module *module = assembly_import_module(ctx->assembly, get_token_value(ctx, tok_path).str, tok_path, current_scope);
 			if (module) {
 				import->data.import.module = module;
@@ -545,7 +557,7 @@ struct ast *parse_hash_directive(struct context *ctx, s32 expected_mask, enum ha
 	case HD_SCOPE_MODULE: {
 		struct scope *current_scope = scope_get(ctx);
 		bassert(current_scope);
-		if (ctx->assembly->target->kind != ASSEMBLY_DOCS) {
+		if (!ctx->process_docs) {
 			struct module *module = ctx->unit->module;
 			if (!module) {
 				report_error(UNEXPECTED_DIRECTIVE, tok_directive, CARET_WORD, "Module private scope cannot be created outside of module.");
@@ -734,7 +746,7 @@ struct ast *parse_decl_member(struct context *ctx, s32 UNUSED(index)) {
 	struct ast               *tag      = parse_hash_directive(ctx, HD_TAG, &found_hd, false);
 	struct ast               *mem      = ast_create_node(ctx->ast_arena, AST_DECL_MEMBER, tok_begin, scope_get(ctx));
 
-	mem->docs           = pop_docs(ctx);
+	consume_docs(ctx, mem);
 	mem->data.decl.type = type;
 	mem->data.decl.name = name;
 	mem->data.decl.tag  = tag;
@@ -816,7 +828,7 @@ struct ast *parse_decl_variant(struct context *ctx, struct ast *prev) {
 	if (!name) return_zone(NULL);
 	struct ast *variant =
 	    ast_create_node(ctx->ast_arena, AST_DECL_VARIANT, tok_begin, scope_get(ctx));
-	variant->docs = pop_docs(ctx);
+	consume_docs(ctx, variant);
 
 	struct token *tok_assign = tokens_consume_if(ctx->tokens, SYM_ASSIGN);
 	if (tok_assign) {
@@ -1306,8 +1318,8 @@ struct ast *parse_stmt_defer(struct context *ctx) {
 		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, tok_err, scope_get(ctx)));
 	}
 
-	struct ast *defer            = ast_create_node(ctx->ast_arena, AST_STMT_DEFER, tok, scope_get(ctx));
-	defer->data.stmt_defer.expr  = expr;
+	struct ast *defer           = ast_create_node(ctx->ast_arena, AST_STMT_DEFER, tok, scope_get(ctx));
+	defer->data.stmt_defer.expr = expr;
 
 	return_zone(defer);
 }
@@ -2245,8 +2257,9 @@ struct ast *parse_decl(struct context *ctx) {
 	// eat :
 	tokens_consume(ctx->tokens);
 
-	struct ast *decl           = ast_create_node(ctx->ast_arena, AST_DECL_ENTITY, tok_begin, scope_get(ctx));
-	decl->docs                 = pop_docs(ctx);
+	struct ast *decl = ast_create_node(ctx->ast_arena, AST_DECL_ENTITY, tok_begin, scope_get(ctx));
+	consume_docs(ctx, decl);
+
 	decl->data.decl.name       = ident;
 	decl->data.decl_entity.mut = true;
 
@@ -2664,6 +2677,7 @@ void init_hash_directives(struct context *ctx) {
 void parser_run(struct assembly *assembly, struct unit *unit) {
 	bassert(assembly);
 	bassert(assembly->gscope && "Missing global scope for assembly.");
+	blog("Size of AST node : %lluB", sizeof(struct ast));
 
 	const u32 thread_index = get_worker_index();
 
@@ -2671,9 +2685,10 @@ void parser_run(struct assembly *assembly, struct unit *unit) {
 	runtime_measure_begin(parse);
 
 	struct context ctx = {
-	    .assembly = assembly,
-	    .unit     = unit,
-	    .tokens   = &unit->tokens,
+	    .assembly     = assembly,
+	    .unit         = unit,
+	    .tokens       = &unit->tokens,
+	    .process_docs = assembly->target->kind == ASSEMBLY_DOCS,
 
 	    .ast_arena          = &assembly->thread_local_contexts[thread_index].ast_arena,
 	    .scope_thread_local = &assembly->thread_local_contexts[thread_index].scope_thread_local,
@@ -2690,7 +2705,15 @@ void parser_run(struct assembly *assembly, struct unit *unit) {
 	unit->ast              = root;
 
 	parse_ublock_content(&ctx, unit->ast);
-	unit->ast->docs = str_buf_view(unit->file_docs_cache);
+
+	// Insert unit docs if any.
+	if (unit->global_docs_cache.len > 0) {
+		struct unit_docs_entry entry = (struct unit_docs_entry){
+		    .hash = unit->ast->id,
+		    .text = str_buf_view(unit->global_docs_cache),
+		};
+		tbl_insert(unit->docs, entry);
+	}
 
 	tbl_free(ctx.hash_directive_table);
 	arrfree(ctx.decl_stack);

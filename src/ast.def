@@ -1,119 +1,119 @@
 #ifdef GEN_AST_KINDS
-    AST_BAD,
-    AST_LOAD,
-    AST_IMPORT,
-    AST_PRIVATE,
-    AST_PUBLIC,
+	AST_BAD,
+	AST_LOAD,
+	AST_IMPORT,
+	AST_PRIVATE,
+	AST_PUBLIC,
 	AST_MODULE_PRIVATE,
-    AST_LINK,
-    AST_IDENT,
-    AST_UBLOCK,
-    AST_BLOCK,
-    AST_UNREACHABLE,
-    AST_DEBUGBREAK,
-    AST_TAG,
-    AST_CALL_LOC,
-    AST_DOCS,
-    AST_REF,
-    AST_DECL_ENTITY,
-    AST_DECL_MEMBER,
-    AST_DECL_ARG,
-    AST_DECL_VARIANT,
-    AST_STMT_USING,
-    AST_STMT_RETURN,
-    AST_STMT_IF,
-    AST_STMT_LOOP,
-    AST_STMT_BREAK,
-    AST_STMT_CONTINUE,
-    AST_STMT_DEFER,
-    AST_STMT_SWITCH,
-    AST_STMT_CASE,
-    AST_TYPE_ARR,
-    AST_TYPE_POLY,
-    AST_TYPE_SLICE,
-    AST_TYPE_DYNARR,
-    AST_TYPE_FN,
-    AST_TYPE_STRUCT,
-    AST_TYPE_ENUM,
-    AST_TYPE_PTR,
-    AST_TYPE_VARGS,
-    AST_TYPE_FN_GROUP,
-    AST_EXPR_TYPE,
-    AST_EXPR_CAST,
-    AST_EXPR_BINOP,
-    AST_EXPR_CALL,
-    AST_EXPR_CATCH,
-    AST_EXPR_ERR,
-    AST_EXPR_ELEM,
-    AST_EXPR_TEST_CASES,
-    AST_EXPR_UNARY,
-    AST_EXPR_NULL,
-    AST_EXPR_ADDROF,
-    AST_EXPR_DEREF,
-    AST_EXPR_COMPOUND,
-    AST_EXPR_LIT_FN,
-    AST_EXPR_LIT_INT,
-    AST_EXPR_LIT_FLOAT,
-    AST_EXPR_LIT_DOUBLE,
-    AST_EXPR_LIT_CHAR,
-    AST_EXPR_LIT_STRING,
-    AST_EXPR_LIT_BOOL,
-    AST_EXPR_LIT_FN_GROUP,
+	AST_LINK,
+	AST_IDENT,
+	AST_UBLOCK,
+	AST_BLOCK,
+	AST_UNREACHABLE,
+	AST_DEBUGBREAK,
+	AST_TAG,
+	AST_CALL_LOC,
+	AST_DOCS,
+	AST_REF,
+	AST_DECL_ENTITY,
+	AST_DECL_MEMBER,
+	AST_DECL_ARG,
+	AST_DECL_VARIANT,
+	AST_STMT_USING,
+	AST_STMT_RETURN,
+	AST_STMT_IF,
+	AST_STMT_LOOP,
+	AST_STMT_BREAK,
+	AST_STMT_CONTINUE,
+	AST_STMT_DEFER,
+	AST_STMT_SWITCH,
+	AST_STMT_CASE,
+	AST_TYPE_ARR,
+	AST_TYPE_POLY,
+	AST_TYPE_SLICE,
+	AST_TYPE_DYNARR,
+	AST_TYPE_FN,
+	AST_TYPE_STRUCT,
+	AST_TYPE_ENUM,
+	AST_TYPE_PTR,
+	AST_TYPE_VARGS,
+	AST_TYPE_FN_GROUP,
+	AST_EXPR_TYPE,
+	AST_EXPR_CAST,
+	AST_EXPR_BINOP,
+	AST_EXPR_CALL,
+	AST_EXPR_CATCH,
+	AST_EXPR_ERR,
+	AST_EXPR_ELEM,
+	AST_EXPR_TEST_CASES,
+	AST_EXPR_UNARY,
+	AST_EXPR_NULL,
+	AST_EXPR_ADDROF,
+	AST_EXPR_DEREF,
+	AST_EXPR_COMPOUND,
+	AST_EXPR_LIT_FN,
+	AST_EXPR_LIT_INT,
+	AST_EXPR_LIT_FLOAT,
+	AST_EXPR_LIT_DOUBLE,
+	AST_EXPR_LIT_CHAR,
+	AST_EXPR_LIT_STRING,
+	AST_EXPR_LIT_BOOL,
+	AST_EXPR_LIT_FN_GROUP,
 #endif
 
 #ifdef GEN_AST_DATA
-    struct ast_private           priv;
-    struct ast_public            pub;
-    struct ast_module_private    module_private;
-    struct ast_load              load;
-    struct ast_import            import;
-    struct ast_link              link;
-    struct ast_ident             ident;
-    struct ast_ublock            ublock;
-    struct ast_block             block;
-    struct ast_tag               tag;
-    struct ast_call_loc          call_loc;
-    struct ast_docs              docs;
-    struct ast_ref               ref;
-    struct ast_stmt_using        stmt_using;
-    struct ast_stmt_return       stmt_return;
-    struct ast_stmt_if           stmt_if;
-    struct ast_stmt_loop         stmt_loop;
-    struct ast_stmt_defer        stmt_defer;
-    struct ast_stmt_switch       stmt_switch;
-    struct ast_stmt_case         stmt_case;
-    struct ast_decl              decl;
-    struct ast_decl_entity       decl_entity;
-    struct ast_decl_arg          decl_arg;
-    struct ast_decl_member       decl_member;
-    struct ast_decl_variant      decl_variant;
-    struct ast_type_arr          type_arr;
-    struct ast_type_poly         type_poly;
-    struct ast_type_slice        type_slice;
-    struct ast_type_dynarr       type_dynarr;
-    struct ast_type_fn           type_fn;
-    struct ast_type_struct       type_strct;
-    struct ast_type_enum         type_enm;
-    struct ast_type_ptr          type_ptr;
-    struct ast_type_vargs        type_vargs;
-    struct ast_type_fn_group     type_fn_group;
-    struct ast_expr_type         expr_type;
-    struct ast_expr_lit_fn       expr_fn;
-    struct ast_expr_lit_int      expr_integer;
-    struct ast_expr_lit_float    expr_float;
-    struct ast_expr_lit_double   expr_double;
-    struct ast_expr_lit_char     expr_character;
-    struct ast_expr_lit_string   expr_string;
-    struct ast_expr_lit_bool     expr_boolean;
-    struct ast_expr_lit_fn_group expr_fn_group;
-    struct ast_expr_cast         expr_cast;
-    struct ast_expr_binop        expr_binop;
-    struct ast_expr_call         expr_call;
-    struct ast_expr_catch        expr_catch;
-    struct ast_expr_err          expr_err;
-    struct ast_expr_elem         expr_elem;
-    struct ast_expr_unary        expr_unary;
-    struct ast_expr_addrof       expr_addrof;
-    struct ast_expr_deref        expr_deref;
-    struct ast_expr_compound     expr_compound;
+	struct ast_private           priv;
+	struct ast_public            pub;
+	struct ast_module_private    module_private;
+	struct ast_load              load;
+	struct ast_import            import;
+	struct ast_link              link;
+	struct ast_ident             ident;
+	struct ast_ublock            ublock;
+	struct ast_block             block;
+	struct ast_tag               tag;
+	struct ast_call_loc          call_loc;
+	struct ast_docs              docs;
+	struct ast_ref               ref;
+	struct ast_stmt_using        stmt_using;
+	struct ast_stmt_return       stmt_return;
+	struct ast_stmt_if           stmt_if;
+	struct ast_stmt_loop         stmt_loop;
+	struct ast_stmt_defer        stmt_defer;
+	struct ast_stmt_switch       stmt_switch;
+	struct ast_stmt_case         stmt_case;
+	struct ast_decl              decl;
+	struct ast_decl_entity       decl_entity;
+	struct ast_decl_arg          decl_arg;
+	struct ast_decl_member       decl_member;
+	struct ast_decl_variant      decl_variant;
+	struct ast_type_arr          type_arr;
+	struct ast_type_poly         type_poly;
+	struct ast_type_slice        type_slice;
+	struct ast_type_dynarr       type_dynarr;
+	struct ast_type_fn           type_fn;
+	struct ast_type_struct       type_strct;
+	struct ast_type_enum         type_enm;
+	struct ast_type_ptr          type_ptr;
+	struct ast_type_vargs        type_vargs;
+	struct ast_type_fn_group     type_fn_group;
+	struct ast_expr_type         expr_type;
+	struct ast_expr_lit_fn       expr_fn;
+	struct ast_expr_lit_int      expr_integer;
+	struct ast_expr_lit_float    expr_float;
+	struct ast_expr_lit_double   expr_double;
+	struct ast_expr_lit_char     expr_character;
+	struct ast_expr_lit_string   expr_string;
+	struct ast_expr_lit_bool     expr_boolean;
+	struct ast_expr_lit_fn_group expr_fn_group;
+	struct ast_expr_cast         expr_cast;
+	struct ast_expr_binop        expr_binop;
+	struct ast_expr_call         expr_call;
+	struct ast_expr_catch        expr_catch;
+	struct ast_expr_err          expr_err;
+	struct ast_expr_elem         expr_elem;
+	struct ast_expr_unary        expr_unary;
+	struct ast_expr_addrof       expr_addrof;
+	struct ast_expr_deref        expr_deref;
+	struct ast_expr_compound     expr_compound;
 #endif

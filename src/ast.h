@@ -376,15 +376,13 @@ struct ast {
 	enum ast_kind    kind;
 	struct location *location;
 	struct scope    *owner_scope;
-	str_t            docs; // Optional documentation string.
+	u64              id;
 
 	union {
 #define GEN_AST_DATA
 #include "ast.def"
 #undef GEN_AST_DATA
 	} data;
-
-	u64 id;
 };
 
 void        ast_arena_init(struct arena *arena, u32 owner_thread_index);
@@ -396,6 +394,7 @@ struct ast *ast_create_node(struct arena *arena,
 const char *ast_binop_to_str(enum binop_kind op);
 const char *ast_unop_to_str(enum unop_kind op);
 const char *ast_get_name(const struct ast *n);
+str_t       ast_get_docs(struct unit *unit, struct ast *node);
 
 static inline bool ast_binop_is_logic(enum binop_kind op) {
 	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;

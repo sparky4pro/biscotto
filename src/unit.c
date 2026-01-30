@@ -2,6 +2,7 @@
 #include "assembly.h"
 #include "builder.h"
 #include "stb_ds.h"
+#include "table.h"
 #include <string.h>
 
 #if BL_PLATFORM_WIN
@@ -38,7 +39,8 @@ struct unit *unit_new(struct assembly *assembly, const str_t filepath, const str
 
 void unit_delete(struct unit *unit) {
 	arrfree(unit->ublock_ast);
-	str_buf_free(&unit->file_docs_cache);
+	tbl_free(unit->docs);
+	str_buf_free(&unit->global_docs_cache);
 	bfree(unit->src);
 	tokens_terminate(&unit->tokens);
 	bfree(unit);
