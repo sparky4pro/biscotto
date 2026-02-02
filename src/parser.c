@@ -2677,7 +2677,7 @@ void init_hash_directives(struct context *ctx) {
 void parser_run(struct assembly *assembly, struct unit *unit) {
 	bassert(assembly);
 	bassert(assembly->gscope && "Missing global scope for assembly.");
-	blog("Size of AST node : %lluB", sizeof(struct ast));
+	// blog("Size of AST node : %lluB", sizeof(struct ast));
 
 	const u32 thread_index = get_worker_index();
 

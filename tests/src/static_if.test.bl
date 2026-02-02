@@ -327,3 +327,16 @@ in_catch_block :: fn () #test {
 	};
 	test_eq(n, 1);
 }
+
+// Failing case from Tine.
+two_in_row :: fn () #test {
+	i := 0;
+	#if false {
+	} else {
+		if i == 10 {
+		}
+	}
+
+	#if true {
+	}
+}

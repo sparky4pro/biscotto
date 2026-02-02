@@ -1424,12 +1424,13 @@ struct mir_insertion_context {
 static inline void insertion_begin(struct context *ctx, struct mir_insertion_context *ictx, struct mir_instr *after_instr, struct mir_codegen *codegen) {
 	bassert(codegen);
 
+	struct mir_instr_block *block = after_instr->owner_block;
+	bassert(block);
+
 	// Swap generation context to pretend we're in original context.
 	ictx->prev_codegen = swap_current_codegen(ctx, codegen);
-	ictx->start_block  = ast_current_block(ctx);
-	bassert(ictx->start_block == after_instr->owner_block && "Starting instruction is supposed to live in the same block as provided in codegen.");
-
-	ictx->terminator = ictx->start_block->terminal;
+	ictx->start_block  = block;
+	ictx->terminator   = block->terminal;
 	// Erase previous terminator so newly added instruction does not land in .unreachable block.
 	erase_instr(ictx->terminator);
 
@@ -1438,8 +1439,13 @@ static inline void insertion_begin(struct context *ctx, struct mir_insertion_con
 	// Reset start block for append of new instructions. Note this might be in the middle.
 	// Thus we need to store original terminator, and continue instruction, these will be added back
 	// after insertion is done.
-	ictx->start_block->terminal   = NULL;
-	ictx->start_block->last_instr = after_instr;
+	block->terminal   = NULL;
+	block->last_instr = after_instr;
+
+	// @Note 2026-02-02: We have to use block in which insertion instruction live, because it might get changed due to
+	//                   previous insetions.
+	set_current_block(ctx, block);
+	set_block_insertion_cursor(block);
 }
 
 static inline void insertion_end(struct context *ctx, struct mir_insertion_context *ictx) {
@@ -12602,6 +12608,12 @@ const char *mir_instr_name(const struct mir_instr *instr) {
 		return "InstrUsing";
 	case MIR_INSTR_DESIGNATOR:
 		return "InstrDesignator";
+	case MIR_INSTR_COND_INSERT:
+		return "CondInsert";
+	case MIR_INSTR_DEFER_INSERT:
+		return "DeferInsert";
+	case MIR_INSTR_DEFER:
+		return "Defer";
 	}
 
 	return "UNKNOWN";
