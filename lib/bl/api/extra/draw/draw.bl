@@ -506,8 +506,8 @@ png_load_from_stream :: fn (stream: *io.Stream, out_data: **u8, out_width: *u32,
 		panic("Bad alloc!");
 	}
 	loop i : u32 = 0; i < h; i += 1 {
-		ptr :: ptr_shift_bytes(image_data, auto i * rowbytes);
-		row_pointers[auto h - 1 - i] = ptr;
+		ptr :: ptr_shift_bytes(image_data, auto (i * rowbytes));
+		row_pointers[auto (h - 1 - i)] = ptr;
 	}
 
 	png.read_image(png_ptr, row_pointers.ptr);
@@ -692,7 +692,7 @@ set_scissor :: fn (position_x: f32, position_y: f32, width: f32, height: f32) {
 
 	v: [4]GLint;
 	gl.GetIntegerv(GL_VIEWPORT, v.ptr);
-	gl.Scissor(auto position_x, v[3] - auto position_y + height, auto width, auto height);
+	gl.Scissor(auto position_x, v[3] - auto (position_y + height), auto width, auto height);
 }
 
 clear_scissor :: fn () {
@@ -1387,7 +1387,7 @@ gen_glyphs :: fn (font: *Font, face: *ft2.Face) {
 		@glyph_info = GlyphInfo.{
 			advance_x      = auto (face.glyph.advance.x >> 6),
 			advance_y      = auto (face.glyph.advance.y >> 6),
-			width          = auto width / 3, // due to LCD rendering mode
+			width          = auto (width / 3), // due to LCD rendering mode
 			height         = auto height,
 			left           = auto face.glyph.bitmap_left,
 			top            = auto face.glyph.bitmap_top,

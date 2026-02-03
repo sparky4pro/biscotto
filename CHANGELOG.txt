@@ -45,6 +45,7 @@ master
 - Add stdio source input support for the compiler.
 - Add support for compiler intrinsic calls at compile-time.
 - Improved documentation generator to support compile-time calls in function type argument list.
+- Change auto cast precedence to match regular cast.
 
 [Modules]
 

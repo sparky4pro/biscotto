@@ -48,9 +48,10 @@ struct token_precedence token_prec(struct token *token) {
 		return (struct token_precedence){.priority = 60, .associativity = TOKEN_ASSOC_LEFT};
 
 		// cast sizeof alignof typeinfo
-	case SYM_CAST:
 	case SYM_TESTCASES:
 	case SYM_NOT:
+	case SYM_CAST:
+	case SYM_CAST_AUTO:
 	case SYM_BIT_NOT:
 		return (struct token_precedence){.priority = 50, .associativity = TOKEN_ASSOC_RIGHT};
 
@@ -102,18 +103,6 @@ struct token_precedence token_prec(struct token *token) {
 		// ||
 	case SYM_LOGIC_OR:
 		return (struct token_precedence){.priority = 4, .associativity = TOKEN_ASSOC_LEFT};
-
-		// = += -= *= /=
-	case SYM_ASSIGN:
-	case SYM_PLUS_ASSIGN:
-	case SYM_MINUS_ASSIGN:
-	case SYM_ASTERISK_ASSIGN:
-	case SYM_SLASH_ASSIGN:
-	case SYM_PERCENT_ASSIGN:
-	case SYM_AND_ASSIGN:
-	case SYM_OR_ASSIGN:
-	case SYM_XOR_ASSIGN:
-		return (struct token_precedence){.priority = 3, .associativity = TOKEN_ASSOC_RIGHT};
 
 	default:
 		return (struct token_precedence){.priority = 0, .associativity = TOKEN_ASSOC_NONE};

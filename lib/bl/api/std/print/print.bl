@@ -284,7 +284,7 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 			tmp.data = cast(*u8) (cast(usize) any.data + i * elem_size);
 			print_any(buf, cur, &tmp);
 
-			if i < auto info.len - 1 {
+			if i < auto (info.len - 1) {
 				print_string(buf, cur, ", ");
 			}
 		}
@@ -324,7 +324,7 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 			return;
 		} else if any.type_info == typeinfo(FmtChar) {
 			fmt :: cast(*FmtChar) any.data;
-			char := cast(u8) u64_from_u8_ptr(&fmt.v, auto sizeof(u8) * 8);
+			char := cast(u8) u64_from_u8_ptr(&fmt.v, auto (sizeof(u8) * 8));
 			print_string(buf, cur, string_view.{1, &char});
 			return;
 		} else if any.type_info == typeinfo(Any) {
@@ -399,7 +399,7 @@ print_any :: fn (buf: *?T, cur: *s32, any: *Any) {
 				print_string(buf, cur, "[");
 				if err.code < 0 {
 					print_string(buf, cur, "-");
-					print_u64(buf, cur, auto err.code * -1, FmtIntBase.DEC, 1);
+					print_u64(buf, cur, auto (err.code * -1), FmtIntBase.DEC, 1);
 				} else {
 					print_u64(buf, cur, auto err.code, FmtIntBase.DEC, 1);
 				}

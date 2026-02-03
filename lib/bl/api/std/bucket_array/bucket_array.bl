@@ -197,7 +197,7 @@ add_bucket :: fn (arr: *?TArr) {
 	bucket := array_push(&arr.buckets);
 	alloc_slice(&bucket.elems, BUCKET_ELEM_COUNT, false, arr.allocator);
 	bucket.mask = 0;
-	array_push(&arr.free_buckets, auto arr.buckets.len - 1);
+	array_push(&arr.free_buckets, auto (arr.buckets.len - 1));
 }
 
 impl_push :: fn (arr: *?TArr, value: bucket_array_typeof_elem(TArr)) *bucket_array_typeof_elem(TArr) {

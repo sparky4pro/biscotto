@@ -337,7 +337,7 @@ test_format_3 :: fn () #test {
 test_bprint_1 :: fn () #test {
 	buf: [10]u8 #noinit;
 	w :: bprint(buf, "%", "1234567890");
-	test_eq(w, auto buf.len-1);
+	test_eq(w, auto (buf.len-1));
 	test_eq(buf[9], '\0');
 }
 

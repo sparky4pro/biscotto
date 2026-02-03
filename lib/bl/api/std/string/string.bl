@@ -503,10 +503,10 @@ strtos64 :: fn (str: string_view, base := FmtIntBase.DEC, count := -1) (s64, Err
 			got_numbers = true;
 			prev_n :: n;
 			digit : s64 #noinit;
-			if      char <= '9' { digit = auto char - '0'; }
-			else if char <= 'F' { digit = auto char - 55;  }
-			else if char <= 'f' { digit = auto char - 87;  }
-			else                { panic();                 }
+			if      char <= '9' { digit = auto (char - '0'); }
+			else if char <= 'F' { digit = auto (char - 55);  }
+			else if char <= 'f' { digit = auto (char - 87);  }
+			else                { panic();                   }
 
 			n = n * b + digit;
 			if n < prev_n {
@@ -558,7 +558,7 @@ strtof64 :: fn (str: string_view, count := -1) (f64, Error) {
 			is_after_comma = true;
 		} else if char >= '0' && char <= '9' {
 			got_numbers = true;
-			n = n * 10 + (auto char - '0');
+			n = n * 10 + auto (char - '0');
 			if is_after_comma {
 				e *= 10;
 			}
@@ -623,7 +623,7 @@ str_split_by_last :: fn (str: string_view, delimiter: u8, lhs: *string_view, rhs
 
 	if rhs {
 		rhs.len = str.len - i - 1;
-		rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
+		rhs.ptr = ptr_shift_bytes(str.ptr, i * auto sizeof(u8) + 1);
 	}
 
 	if di { (@di) = auto i; }
@@ -706,7 +706,7 @@ str_split_by_first :: fn (str: string_view, delimiter: u8, lhs: *string_view, rh
 
 	if rhs {
 		rhs.len = str.len - i - 1;
-		rhs.ptr = ptr_shift_bytes(str.ptr, auto sizeof(u8) * auto i + 1);
+		rhs.ptr = ptr_shift_bytes(str.ptr, i * auto sizeof(u8) + 1);
 	}
 
 	if di { (@di) = auto i; }
@@ -872,7 +872,7 @@ str_is_zero_terminated :: fn (str: string_view) bool #inline #obsolete "Since 0.
 /// Empty strings are valid input and are converted to C string as "\0".
 strtoc :: fn (str: string_view, _allocator : *Allocator = null) *C.char #inline {
 	allocator :: if !_allocator then application_context.temporary_allocator else _allocator;
-	mem, err :: alloc(auto str.len + 1, alignof(C.char), allocator);
+	mem, err :: alloc(auto (str.len + 1), alignof(C.char), allocator);
 	if err then panic(err);
 	cstr :: []C.char.{ str.len + 1, auto mem };
 	memcpy(auto cstr.ptr, str.ptr, auto str.len);

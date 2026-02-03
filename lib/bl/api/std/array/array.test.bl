@@ -118,7 +118,7 @@ test_pop :: fn () #test {
 		array_push(&arr, i);
 	}
 
-	expected : s32 = auto arr.len - 1;
+	expected : s32 = auto (arr.len - 1);
 	value := 0;
 	loop array_pop(&arr, &value) {
 		test_true(expected >= 0);

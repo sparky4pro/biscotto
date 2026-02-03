@@ -1,4 +1,5 @@
 #import "std/print"
+#import "std/type_utils"
 
 /*
 
@@ -8,10 +9,8 @@ Foo.{ x += 1 }
 
  */
 
+
+
 main :: fn () s32 {
-
-
-	a = 10 = 20;
-
 	return 0;
 }

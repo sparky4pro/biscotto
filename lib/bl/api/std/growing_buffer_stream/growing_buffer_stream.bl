@@ -62,7 +62,7 @@ write :: fn (stream: *GrowingBufferStream, src: *u8, bytes_to_write: s64) (s64, 
 		if stream.data.len == 0 {
 			new_size = math.max(ALLOC_BLOCK_SIZE, auto bytes_to_write);
 		} else {
-			new_size = math.max(cast(usize) (GROW_FACTOR * auto stream.data.len), auto bytes_to_write + stream.data.len);
+			new_size = math.max(cast(usize) (GROW_FACTOR * auto stream.data.len), auto (bytes_to_write + stream.data.len));
 		}
 
 		assert(new_size >= auto bytes_to_write);
