@@ -63,6 +63,7 @@ static void print_stmt_continue(struct ast *ctx, s32 pad, FILE *stream);
 static void print_stmt_using(struct ast *using, s32 pad, FILE *stream);
 static void print_stmt_return(struct ast *ret, s32 pad, FILE *stream);
 static void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream);
+static void print_stmt_assign(struct ast *assign, s32 pad, FILE *stream);
 static void print_decl_entity(struct ast *entity, s32 pad, FILE *stream);
 static void print_decl_arg(struct ast *arg, s32 pad, FILE *stream);
 static void print_decl_member(struct ast *member, s32 pad, FILE *stream);
@@ -286,6 +287,13 @@ void print_stmt_return(struct ast *ret, s32 pad, FILE *stream) {
 void print_stmt_defer(struct ast *defer, s32 pad, FILE *stream) {
 	print_head(defer, pad, stream);
 	print_node(defer->data.stmt_defer.expr, pad + 1, stream);
+}
+
+void print_stmt_assign(struct ast *assign, s32 pad, FILE *stream) {
+	print_head(assign, pad, stream);
+	fprintf(stream, "'%s' ", ast_assign_to_str(assign->data.stmt_assign.kind));
+	print_node(assign->data.stmt_assign.lhs, pad + 1, stream);
+	print_node(assign->data.stmt_assign.rhs, pad + 1, stream);
 }
 
 void print_decl_entity(struct ast *entity, s32 pad, FILE *stream) {
@@ -614,6 +622,10 @@ void print_node(struct ast *node, s32 pad, FILE *stream) {
 
 	case AST_STMT_CONTINUE:
 		print_stmt_continue(node, pad, stream);
+		break;
+
+	case AST_STMT_ASSIGN:
+		print_stmt_assign(node, pad, stream);
 		break;
 
 	case AST_EXPR_COMPOUND:

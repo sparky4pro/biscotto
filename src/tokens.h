@@ -54,8 +54,26 @@ struct tokens {
 	usize iter;
 };
 
+static inline bool sym_is_assign(enum sym sym) {
+	switch (sym) {
+	case SYM_PLUS_ASSIGN:
+	case SYM_MINUS_ASSIGN:
+	case SYM_ASTERISK_ASSIGN:
+	case SYM_SLASH_ASSIGN:
+	case SYM_PERCENT_ASSIGN:
+	case SYM_AND_ASSIGN:
+	case SYM_OR_ASSIGN:
+	case SYM_XOR_ASSIGN:
+	case SYM_ASSIGN:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 static inline bool sym_is_binop(enum sym sym) {
-	return sym >= SYM_EQ && sym <= SYM_ASTERISK;
+	return sym >= SYM_EQ && sym <= SYM_ASTERISK && !sym_is_assign(sym);
 }
 
 #define token_is_binop(token) (sym_is_binop((token)->sym))

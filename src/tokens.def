@@ -1,3 +1,5 @@
+/* Order here is not arbitrary! Be aware of possible collisions in lexer, for example '=' vs '=='. */
+
 sm(EOF = 0,        "end", 0)
 sm(IDENT,          "identifier", 0)
 sm(STRING,         "string", 0)
@@ -50,7 +52,7 @@ sm(SEMICOLON,      ";", 1)
 sm(COLON,          ":", 1)
 sm(VARGS,          "...", 3)
 sm(DYNARR,         "..", 2)
-sm(EQ,             "==", 2) /* logical begin */
+sm(EQ,             "==", 2) /* binary begin */
 sm(NEQ,            "!=", 2)
 sm(GREATER_EQ,     ">=", 2)
 sm(LESS_EQ,        "<=", 2)
@@ -78,7 +80,7 @@ sm(SLASH,          "/", 1)
 sm(PERCENT,        "%", 1)
 sm(PLUS,           "+", 1)
 sm(MINUS,          "-", 1)
-sm(ASTERISK,       "*", 1) /* logical end */
+sm(ASTERISK,       "*", 1) /* binary end */
 sm(DOT,            ".", 1)
 sm(AT,             "@", 1)
 sm(NONE,           "", 0)

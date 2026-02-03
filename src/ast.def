@@ -28,6 +28,7 @@
 	AST_STMT_DEFER,
 	AST_STMT_SWITCH,
 	AST_STMT_CASE,
+        AST_STMT_ASSIGN,
 	AST_TYPE_ARR,
 	AST_TYPE_POLY,
 	AST_TYPE_SLICE,
@@ -82,6 +83,7 @@
 	struct ast_stmt_defer        stmt_defer;
 	struct ast_stmt_switch       stmt_switch;
 	struct ast_stmt_case         stmt_case;
+        struct ast_stmt_assign       stmt_assign;
 	struct ast_decl              decl;
 	struct ast_decl_entity       decl_entity;
 	struct ast_decl_arg          decl_arg;

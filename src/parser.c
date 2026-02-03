@@ -65,44 +65,46 @@ struct context {
 
 // helpers
 // fw decls
-static enum binop_kind sym_to_binop_kind(enum sym sm);
-static enum unop_kind  sym_to_unop_kind(enum sym sm);
-static bool            parse_docs(struct context *ctx);
-static bool            parse_unit_docs(struct context *ctx);
-static void            parse_ublock_content(struct context *ctx, struct ast *ublock);
-static struct ast     *parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied, const bool is_in_expression);
-static struct ast     *parse_unrecheable(struct context *ctx);
-static struct ast     *parse_debugbreak(struct context *ctx);
-static struct ast     *parse_ident_group(struct context *ctx);
-static struct ast     *parse_single_block_stmt_or_expr(struct context *ctx, bool *out_require_semicolon);
-static struct ast     *parse_block(struct context *ctx, enum scope_kind scope_kind);
-static struct ast     *parse_decl(struct context *ctx);
-static struct ast     *parse_decl_member(struct context *ctx, s32 index);
-static struct ast     *parse_decl_arg(struct context *ctx, bool named);
-static struct ast     *parse_decl_variant(struct context *ctx, struct ast *prev);
-static struct ast     *parse_type(struct context *ctx);
-static struct ast     *parse_ref(struct context *ctx);
-static struct ast     *parse_ref_nested(struct context *ctx, struct ast *prev);
-static struct ast     *parse_type_polymorph(struct context *ctx);
-static struct ast     *parse_type_arr(struct context *ctx);
-static struct ast     *parse_type_slice(struct context *ctx);
-static struct ast     *parse_type_dynarr(struct context *ctx);
-static struct ast     *parse_type_fn(struct context *ctx, bool named_args, bool create_scope);
-static struct ast     *parse_type_fn_group(struct context *ctx);
-static struct ast     *parse_type_fn_return(struct context *ctx);
-static struct ast     *parse_type_struct(struct context *ctx);
-static struct ast     *parse_type_enum(struct context *ctx);
-static struct ast     *parse_type_ptr(struct context *ctx);
-static struct ast     *parse_type_vargs(struct context *ctx);
-static struct ast     *parse_stmt_return(struct context *ctx);
-static struct ast     *parse_stmt_using(struct context *ctx);
-static struct ast     *parse_stmt_if(struct context *ctx, bool is_static);
-static struct ast     *parse_stmt_loop(struct context *ctx);
-static struct ast     *parse_stmt_break(struct context *ctx);
-static struct ast     *parse_stmt_continue(struct context *ctx);
-static struct ast     *parse_stmt_defer(struct context *ctx);
-static struct ast     *parse_stmt_switch(struct context *ctx);
-static struct ast     *parse_stmt_case(struct context *ctx);
+static enum binop_kind  sym_to_binop_kind(enum sym sm);
+static enum unop_kind   sym_to_unop_kind(enum sym sm);
+static enum assign_kind sym_to_assing_kind(enum sym sm);
+static bool             parse_docs(struct context *ctx);
+static bool             parse_unit_docs(struct context *ctx);
+static void             parse_ublock_content(struct context *ctx, struct ast *ublock);
+static struct ast      *parse_hash_directive(struct context *ctx, s32 expected_mask, enum hash_directive_flags *satisfied, const bool is_in_expression);
+static struct ast      *parse_unrecheable(struct context *ctx);
+static struct ast      *parse_debugbreak(struct context *ctx);
+static struct ast      *parse_ident_group(struct context *ctx);
+static struct ast      *parse_single_block_stmt_or_expr(struct context *ctx, bool *out_require_semicolon);
+static struct ast      *parse_block(struct context *ctx, enum scope_kind scope_kind);
+static struct ast      *parse_decl(struct context *ctx);
+static struct ast      *parse_decl_member(struct context *ctx, s32 index);
+static struct ast      *parse_decl_arg(struct context *ctx, bool named);
+static struct ast      *parse_decl_variant(struct context *ctx, struct ast *prev);
+static struct ast      *parse_type(struct context *ctx);
+static struct ast      *parse_ref(struct context *ctx);
+static struct ast      *parse_ref_nested(struct context *ctx, struct ast *prev);
+static struct ast      *parse_type_polymorph(struct context *ctx);
+static struct ast      *parse_type_arr(struct context *ctx);
+static struct ast      *parse_type_slice(struct context *ctx);
+static struct ast      *parse_type_dynarr(struct context *ctx);
+static struct ast      *parse_type_fn(struct context *ctx, bool named_args, bool create_scope);
+static struct ast      *parse_type_fn_group(struct context *ctx);
+static struct ast      *parse_type_fn_return(struct context *ctx);
+static struct ast      *parse_type_struct(struct context *ctx);
+static struct ast      *parse_type_enum(struct context *ctx);
+static struct ast      *parse_type_ptr(struct context *ctx);
+static struct ast      *parse_type_vargs(struct context *ctx);
+static struct ast      *parse_stmt_return(struct context *ctx);
+static struct ast      *parse_stmt_using(struct context *ctx);
+static struct ast      *parse_stmt_if(struct context *ctx, bool is_static);
+static struct ast      *parse_stmt_loop(struct context *ctx);
+static struct ast      *parse_stmt_break(struct context *ctx);
+static struct ast      *parse_stmt_continue(struct context *ctx);
+static struct ast      *parse_stmt_defer(struct context *ctx);
+static struct ast      *parse_stmt_switch(struct context *ctx);
+static struct ast      *parse_stmt_case(struct context *ctx);
+static struct ast      *parse_stmt_assign_or_single_expression(struct context *ctx);
 
 // EXPRESSIONS
 static struct ast *parse_expr(struct context *ctx);
@@ -202,24 +204,6 @@ static inline void consume_docs(struct context *ctx, struct ast *consumer_node) 
 
 enum binop_kind sym_to_binop_kind(enum sym sm) {
 	switch (sm) {
-	case SYM_ASSIGN:
-		return BINOP_ASSIGN;
-	case SYM_PLUS_ASSIGN:
-		return BINOP_ADD_ASSIGN;
-	case SYM_MINUS_ASSIGN:
-		return BINOP_SUB_ASSIGN;
-	case SYM_ASTERISK_ASSIGN:
-		return BINOP_MUL_ASSIGN;
-	case SYM_SLASH_ASSIGN:
-		return BINOP_DIV_ASSIGN;
-	case SYM_PERCENT_ASSIGN:
-		return BINOP_MOD_ASSIGN;
-	case SYM_AND_ASSIGN:
-		return BINOP_AND_ASSIGN;
-	case SYM_OR_ASSIGN:
-		return BINOP_OR_ASSIGN;
-	case SYM_XOR_ASSIGN:
-		return BINOP_XOR_ASSIGN;
 	case SYM_PLUS:
 		return BINOP_ADD;
 	case SYM_MINUS:
@@ -257,7 +241,7 @@ enum binop_kind sym_to_binop_kind(enum sym sm) {
 	case SYM_SHL:
 		return BINOP_SHL;
 	default:
-		babort("unknown binop operation!!!");
+		babort("Unknown binop operation!");
 	}
 }
 
@@ -272,7 +256,32 @@ enum unop_kind sym_to_unop_kind(enum sym sm) {
 	case SYM_BIT_NOT:
 		return UNOP_BIT_NOT;
 	default:
-		babort("unknown unop operation!!!");
+		babort("Unknown unop operation!");
+	}
+}
+
+enum assign_kind sym_to_assing_kind(enum sym sm) {
+	switch (sm) {
+	case SYM_PLUS_ASSIGN:
+		return ASSIGN_ADD;
+	case SYM_MINUS_ASSIGN:
+		return ASSIGN_SUB;
+	case SYM_ASTERISK_ASSIGN:
+		return ASSIGN_MUL;
+	case SYM_SLASH_ASSIGN:
+		return ASSIGN_DIV;
+	case SYM_PERCENT_ASSIGN:
+		return ASSIGN_MOD;
+	case SYM_AND_ASSIGN:
+		return ASSIGN_AND;
+	case SYM_OR_ASSIGN:
+		return ASSIGN_OR;
+	case SYM_XOR_ASSIGN:
+		return ASSIGN_XOR;
+	case SYM_ASSIGN:
+		return ASSIGN;
+	default:
+		babort("Unknown assign operation!");
 	}
 }
 
@@ -610,7 +619,7 @@ struct ast *parse_expr_compound(struct context *ctx, struct ast *prev) {
 	struct ast *tmp;
 
 NEXT:
-	tmp = parse_expr(ctx);
+	tmp = parse_stmt_assign_or_single_expression(ctx);
 	if (tmp) {
 		if (!compound->data.expr_compound.values) {
 			compound->data.expr_compound.values = arena_alloc(ctx->sarr_arena);
@@ -1221,6 +1230,41 @@ SKIP_EXPRS:
 	return_zone(stmt_case);
 }
 
+struct ast *parse_stmt_assign_or_single_expression(struct context *ctx) {
+	zone();
+
+	// @Note 2026-01-31: Unlike in C programming language, we treat assignment as a top level
+	//                   statement rather than operator. This means it does not yield any value
+	//                   and it cannot be used inside expressions. On the other hand it's way
+	//                   easier to parse things like group value assignment as: 'x, y, z = 10;'.
+	//
+	//                   This is valid only in block scopes, and in case assignment is not preset
+	//                   we return only lhs expression, thus it's not supposed to be parsed again
+	//                   later.
+
+	struct ast *lhs = parse_expr(ctx);
+	if (!lhs) return_zone(NULL);
+
+	struct token *op = tokens_peek(ctx->tokens);
+	if (!sym_is_assign(op->sym)) return lhs;
+	tokens_consume(ctx->tokens); // Eat operator.
+
+	struct ast *rhs = parse_expr(ctx);
+	if (!rhs) {
+		struct token *err_tok = tokens_peek(ctx->tokens);
+		report_error(EXPECTED_EXPR, err_tok, CARET_WORD, "Expected expression after assignment operator.");
+		tokens_consume_till(ctx->tokens, SYM_SEMICOLON);
+		return_zone(ast_create_node(ctx->ast_arena, AST_BAD, op, scope_get(ctx)));
+	}
+
+	struct ast *assign            = ast_create_node(ctx->ast_arena, AST_STMT_ASSIGN, op, scope_get(ctx));
+	assign->data.stmt_assign.kind = sym_to_assing_kind(op->sym);
+	assign->data.stmt_assign.lhs  = lhs;
+	assign->data.stmt_assign.rhs  = rhs;
+
+	return_zone(assign);
+}
+
 static enum tokens_lookahead_state cmp_stmt_loop(struct token *curr) {
 	if (token_is(curr, SYM_SEMICOLON))
 		return TOK_LOOK_HIT;
@@ -1259,7 +1303,7 @@ struct ast *parse_stmt_loop(struct context *ctx) {
 				bassert(false);
 			}
 
-			loop->data.stmt_loop.increment = parse_expr(ctx);
+			loop->data.stmt_loop.increment = parse_stmt_assign_or_single_expression(ctx);
 		} else {
 			// while construct with optional condition
 			loop->data.stmt_loop.condition = parse_expr(ctx);
@@ -1359,33 +1403,18 @@ struct ast *_parse_expr(struct context *ctx, s32 p) {
 
 struct ast *parse_expr_primary(struct context *ctx) {
 	struct ast *expr = NULL;
-	switch (tokens_peek_sym(ctx->tokens)) {
-	case SYM_LPAREN:
-		expr = parse_expr_nested(ctx);
-		break;
-	case SYM_IDENT:
-		expr = parse_expr_ref(ctx);
-		break;
-	case SYM_NULL:
-		expr = parse_expr_null(ctx);
-		break;
-	case SYM_HASH:
-		expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_IMPORT, NULL, true);
-		break;
-	case SYM_FN:
-		if ((expr = parse_expr_lit_fn(ctx))) break;
-		expr = parse_expr_lit_fn_group(ctx);
-		break;
-	case SYM_IF:
-		expr = parse_stmt_if(ctx, false);
-		break;
-	default:
-		break;
-	}
-	if (expr) return expr;
+
+	if ((expr = parse_expr_nested(ctx))) return expr;
+	if ((expr = parse_expr_ref(ctx))) return expr;
+	if ((expr = parse_expr_null(ctx))) return expr;
+	if ((expr = parse_hash_directive(ctx, HD_FILE | HD_LINE | HD_IMPORT, NULL, true))) return expr;
+	if ((expr = parse_expr_lit_fn(ctx))) return expr;
+	if ((expr = parse_expr_lit_fn_group(ctx))) return expr;
+	if ((expr = parse_stmt_if(ctx, false))) return expr;
 	if ((expr = parse_expr_capture_last(ctx))) return expr;
 	if ((expr = parse_expr_lit(ctx))) return expr;
 	if ((expr = parse_expr_type(ctx))) return expr;
+
 	return NULL;
 }
 
@@ -1413,28 +1442,15 @@ struct ast *parse_expr_unary(struct context *ctx) {
 
 struct ast *parse_expr_atom(struct context *ctx) {
 	struct ast *expr = NULL;
-	switch (tokens_peek_sym(ctx->tokens)) {
-	case SYM_AT:
-		expr = parse_expr_deref(ctx);
-		break;
-	case SYM_AND:
-		expr = parse_expr_addrof(ctx);
-		break;
-	case SYM_CAST:
-		expr = parse_expr_cast(ctx);
-		break;
-	case SYM_CAST_AUTO:
-		expr = parse_expr_cast_auto(ctx);
-		break;
-	case SYM_TESTCASES:
-		expr = parse_expr_test_cases(ctx);
-		break;
-	default:
-		break;
-	}
-	if (expr) return expr;
+
+	if ((expr = parse_expr_deref(ctx))) return expr;
+	if ((expr = parse_expr_addrof(ctx))) return expr;
+	if ((expr = parse_expr_cast(ctx))) return expr;
+	if ((expr = parse_expr_cast_auto(ctx))) return expr;
+	if ((expr = parse_expr_test_cases(ctx))) return expr;
 	if ((expr = parse_expr_primary(ctx))) return expr;
 	if ((expr = parse_expr_unary(ctx))) return expr;
+
 	return NULL;
 }
 
@@ -1645,11 +1661,10 @@ NEXT:
 
 struct ast *parse_expr_nested(struct context *ctx) {
 	zone();
-	struct ast   *expr      = NULL;
 	struct token *tok_begin = tokens_consume_if(ctx->tokens, SYM_LPAREN);
 	if (!tok_begin) return_zone(NULL);
 
-	expr = parse_expr(ctx);
+	struct ast *expr = parse_expr(ctx);
 	if (expr == NULL) {
 		report_error(EXPECTED_EXPR, tok_begin, CARET_WORD, "Expected expression.");
 	}
@@ -2482,84 +2497,95 @@ struct ast *parse_single_block_stmt_or_expr(struct context *ctx, bool *out_requi
 	struct token *tok;
 	struct ast   *tmp = NULL;
 
-	if (out_require_semicolon) *out_require_semicolon = false;
+#define REQUIRE_SEMICOLON(v) \
+	if (out_require_semicolon) *out_require_semicolon = ((v) && AST_IS_OK(tmp))
 
 NEXT:
-	switch (tokens_peek_sym(ctx->tokens)) {
-	case SYM_SEMICOLON:
+	if (tokens_peek_sym(ctx->tokens) == SYM_SEMICOLON) {
 		tok = tokens_consume(ctx->tokens);
 		if (builder.errorc == 0) {
 			report_warning(tok, CARET_WORD, "Extra semicolon can be removed ';'.");
 		}
 		goto NEXT;
-
-	case SYM_HASH: {
-		enum hash_directive_flags satisfied;
-		tmp = parse_hash_directive(ctx, HD_STATIC_IF, &satisfied, false);
-		break;
 	}
-	case SYM_RETURN:
-		tmp = parse_stmt_return(ctx);
-		if (out_require_semicolon && AST_IS_OK(tmp)) *out_require_semicolon = true;
+
+	if ((tmp = parse_hash_directive(ctx, HD_STATIC_IF, NULL, false))) {
+		REQUIRE_SEMICOLON(false);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_return(ctx))) {
+		REQUIRE_SEMICOLON(true);
 		if (tmp->kind == AST_STMT_RETURN) {
 			struct ast *owner_block = block_get(ctx);
 			bassert(owner_block && owner_block->kind == AST_BLOCK);
 			tmp->data.stmt_return.owner_block  = owner_block;
 			owner_block->data.block.has_return = true;
 		}
-		break;
-	case SYM_USING:
-		tmp = parse_stmt_using(ctx);
-		if (out_require_semicolon && AST_IS_OK(tmp)) *out_require_semicolon = true;
-		break;
-	case SYM_IF:
-		tmp = parse_stmt_if(ctx, false);
-		break;
-	case SYM_SWITCH:
-		tmp = parse_stmt_switch(ctx);
-		break;
-	case SYM_LOOP:
-		tmp = parse_stmt_loop(ctx);
-		break;
-	case SYM_BREAK:
-		tmp = parse_stmt_break(ctx);
-		if (out_require_semicolon) *out_require_semicolon = true;
-		break;
-	case SYM_CONTINUE:
-		tmp = parse_stmt_continue(ctx);
-		if (out_require_semicolon) *out_require_semicolon = true;
-		break;
-	case SYM_DEFER:
-		tmp = parse_stmt_defer(ctx);
-		if (out_require_semicolon && AST_IS_OK(tmp)) *out_require_semicolon = true;
-		break;
-	case SYM_LBLOCK:
-		tmp = parse_block(ctx, SCOPE_LEXICAL);
-		break;
-	case SYM_UNREACHABLE:
-		tmp = parse_unrecheable(ctx);
-		if (out_require_semicolon) *out_require_semicolon = true;
-		break;
-	case SYM_DEBUGBREAK:
-		tmp = parse_debugbreak(ctx);
-		if (out_require_semicolon) *out_require_semicolon = true;
-		break;
-	default:
-		break;
+		return tmp;
 	}
 
-	if (tmp) return tmp;
+	if ((tmp = parse_stmt_using(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
 
-	// Others
+	if ((tmp = parse_stmt_if(ctx, false))) {
+		REQUIRE_SEMICOLON(false);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_switch(ctx))) {
+		REQUIRE_SEMICOLON(false);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_loop(ctx))) {
+		REQUIRE_SEMICOLON(false);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_break(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_continue(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
+	if ((tmp = parse_stmt_defer(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
+	if ((tmp = parse_block(ctx, SCOPE_LEXICAL))) {
+		REQUIRE_SEMICOLON(false);
+		return tmp;
+	}
+
+	if ((tmp = parse_unrecheable(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
+	if ((tmp = parse_debugbreak(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
 	if ((tmp = (struct ast *)parse_decl(ctx))) {
-		if (out_require_semicolon) *out_require_semicolon = true;
-		return tmp;
-	}
-	if ((tmp = parse_expr(ctx))) {
-		if (out_require_semicolon && AST_IS_OK(tmp)) *out_require_semicolon = true;
+		REQUIRE_SEMICOLON(true);
 		return tmp;
 	}
 
+	if ((tmp = parse_stmt_assign_or_single_expression(ctx))) {
+		REQUIRE_SEMICOLON(true);
+		return tmp;
+	}
+
+#undef REQUIRE_SEMICOLON
 	return NULL;
 }
 

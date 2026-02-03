@@ -578,6 +578,7 @@ static void                    ast_stmt_break(struct context *ctx, struct ast *b
 static void                    ast_stmt_continue(struct context *ctx, struct ast *cont);
 static void                    ast_stmt_switch(struct context *ctx, struct ast *stmt_switch);
 static void                    ast_stmt_using(struct context *ctx, struct ast *using);
+static void                    ast_stmt_assign(struct context *ctx, struct ast *assign);
 static struct mir_instr       *ast_decl_entity(struct context *ctx, struct ast *entity);
 static struct mir_instr       *ast_decl_arg(struct context *ctx, struct ast *arg);
 static struct mir_instr       *ast_decl_member(struct context *ctx, struct ast *arg);
@@ -10939,6 +10940,62 @@ void ast_stmt_using(struct context *ctx, struct ast *using) {
 	append_instr_using(ctx, using, using->owner_scope, ast(ctx, ast_scope));
 }
 
+static inline void ast_append_compound_assignment_operation(struct context *ctx, struct ast *assign, enum binop_kind op) {
+	struct ast *ast_lhs = assign->data.stmt_assign.lhs;
+	struct ast *ast_rhs = assign->data.stmt_assign.rhs;
+
+	struct mir_instr *rhs = ast(ctx, ast_rhs);
+	struct mir_instr *lhs = ast(ctx, ast_lhs);
+	struct mir_instr *tmp = append_instr_binop(ctx, assign, lhs, rhs, op);
+	lhs                   = ast(ctx, ast_lhs);
+
+	append_instr_store(ctx, assign, tmp, lhs);
+}
+
+void ast_stmt_assign(struct context *ctx, struct ast *assign) {
+	bassert(assign->data.stmt_assign.lhs && assign->data.stmt_assign.rhs);
+	switch (assign->data.stmt_assign.kind) {
+	case ASSIGN: {
+		struct mir_instr *rhs = ast(ctx, assign->data.stmt_assign.rhs);
+		struct mir_instr *lhs = ast(ctx, assign->data.stmt_assign.lhs);
+
+		// In case right hand side expression is compound initializer, we don't need
+		// temp storage for it, we can just copy compound content directly into
+		// variable, so we set it here as non-naked.
+		set_compound_naked(rhs, false);
+		append_instr_store(ctx, assign, rhs, lhs);
+		break;
+	}
+
+	case ASSIGN_ADD:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_ADD);
+		break;
+	case ASSIGN_SUB:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_SUB);
+		break;
+	case ASSIGN_MUL:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_MUL);
+		break;
+	case ASSIGN_DIV:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_DIV);
+		break;
+	case ASSIGN_MOD:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_MOD);
+		break;
+	case ASSIGN_AND:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_AND);
+		break;
+	case ASSIGN_OR:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_OR);
+		break;
+	case ASSIGN_XOR:
+		ast_append_compound_assignment_operation(ctx, assign, BINOP_XOR);
+		break;
+	default:
+		babort("Invalid assign operation.");
+	}
+}
+
 void ast_stmt_return(struct context *ctx, struct ast *ret) {
 	// Return statement produce only setup of .ret temporary and break into the exit
 	// block of the function.
@@ -11032,13 +11089,13 @@ struct mir_instr *ast_expr_compound(struct context *ctx, struct ast *cmp) {
 	// Values must be appended in reverse order.
 	for (usize i = valc; i-- > 0;) {
 		ast_value = sarrpeek(ast_values, i);
-		if (ast_value->kind == AST_EXPR_BINOP && ast_value->data.expr_binop.kind == BINOP_ASSIGN) {
+		if (ast_value->kind == AST_STMT_ASSIGN && ast_value->data.stmt_assign.kind == ASSIGN) {
 			// In case the compound initializer value is written as <name> = <value> we use compound
 			// initializer designator as a placeholder here. This instruction is later replaced
 			// during analyze pass when the index of initialized value is found in the type scope.
 			// Currently we support only this simple way without any access to sub-members.
-			struct ast *ast_designator = ast_value->data.expr_binop.lhs;
-			struct ast *ast_init_value = ast_value->data.expr_binop.rhs;
+			struct ast *ast_designator = ast_value->data.stmt_assign.lhs;
+			struct ast *ast_init_value = ast_value->data.stmt_assign.rhs;
 			struct ast *ast_id         = NULL;
 			// Validate designator
 			if (ast_designator->kind != AST_REF) {
@@ -11488,90 +11545,6 @@ struct mir_instr *ast_expr_binop(struct context *ctx, struct ast *binop) {
 	const enum binop_kind op = binop->data.expr_binop.kind;
 
 	switch (op) {
-	case BINOP_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-
-		// In case right hand side expression is compound initializer, we don't need
-		// temp storage for it, we can just copy compound content directly into
-		// variable, so we set it here as non-naked.
-		set_compound_naked(rhs, false);
-		return append_instr_store(ctx, binop, rhs, lhs);
-	}
-
-	// @CLEANUP Create helper function for these.
-	case BINOP_ADD_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_ADD);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_SUB_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_SUB);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_MUL_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_MUL);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_DIV_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_DIV);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_MOD_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_MOD);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_AND_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_AND);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_OR_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_OR);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
-	case BINOP_XOR_ASSIGN: {
-		struct mir_instr *rhs = ast(ctx, ast_rhs);
-		struct mir_instr *lhs = ast(ctx, ast_lhs);
-		struct mir_instr *tmp = append_instr_binop(ctx, binop, lhs, rhs, BINOP_XOR);
-		lhs                   = ast(ctx, ast_lhs);
-
-		return append_instr_store(ctx, binop, tmp, lhs);
-	}
-
 	case BINOP_LOGIC_AND:
 	case BINOP_LOGIC_OR: {
 		struct mir_fn *fn = ast_current_fn(ctx);
@@ -11906,13 +11879,10 @@ static void ast_decl_var_global_or_struct(struct context *ctx, struct ast *ast_g
 }
 
 struct mir_instr *ast_decl_entity(struct context *ctx, struct ast *entity) {
-	struct ast *ast_name       = entity->data.decl.name;
 	struct ast *ast_value      = entity->data.decl_entity.value;
 	const bool  is_fn_decl     = ast_value && ast_value->kind == AST_EXPR_LIT_FN;
 	const bool  is_global      = entity->data.decl_entity.is_global;
 	const bool  is_struct_decl = ast_value && ast_value->kind == AST_EXPR_TYPE && ast_value->data.expr_type.type->kind == AST_TYPE_STRUCT;
-	bassert(ast_name && "Missing entity name.");
-	bassert(ast_name->kind == AST_IDENT && "Expected identifier.");
 	if (is_fn_decl) {
 		ast_decl_fn(ctx, entity);
 	} else {
@@ -12406,6 +12376,9 @@ struct mir_instr *ast(struct context *ctx, struct ast *node) {
 		return ast_stmt_if(ctx, node);
 	case AST_STMT_SWITCH:
 		ast_stmt_switch(ctx, node);
+		break;
+	case AST_STMT_ASSIGN:
+		ast_stmt_assign(ctx, node);
 		break;
 	case AST_DECL_ENTITY:
 		return ast_decl_entity(ctx, node);

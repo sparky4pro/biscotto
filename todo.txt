@@ -12,6 +12,9 @@ expected_k_offset := outer_info.members[0].offset_bytes;
 @compiler 4
 Check mutability of member_ptr and addrof in general after recent changes.
 
+@compiler 4
+Check 'Foo.{ x += 1 }' if it's invalid.
+
 @compiler 2
 Can we generate default return for void returning functions in AST stage?
 

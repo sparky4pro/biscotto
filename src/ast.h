@@ -39,24 +39,14 @@ enum ast_flags {
 	FLAG_OBSOLETE     = 1 << 16, // obsolete functions
 };
 
-// map symbols to binary operation kind
 enum binop_kind {
 	BINOP_INVALID = 0,
-	BINOP_ASSIGN,
-	BINOP_ADD_ASSIGN,
-	BINOP_SUB_ASSIGN,
-	BINOP_MUL_ASSIGN,
-	BINOP_DIV_ASSIGN,
-	BINOP_MOD_ASSIGN,
-	BINOP_AND_ASSIGN,
-	BINOP_OR_ASSIGN,
-	BINOP_XOR_ASSIGN,
 	BINOP_ADD,
 	BINOP_SUB,
 	BINOP_MUL,
 	BINOP_DIV,
 	BINOP_MOD,
-	BINOP_EQ,
+	BINOP_EQ, // first logic
 	BINOP_NEQ,
 	BINOP_GREATER,
 	BINOP_LESS,
@@ -65,7 +55,7 @@ enum binop_kind {
 	BINOP_LOGIC_AND,
 	BINOP_LOGIC_OR,
 	BINOP_AND,
-	BINOP_OR,
+	BINOP_OR, // last logic
 	BINOP_XOR,
 	BINOP_SHR,
 	BINOP_SHL,
@@ -170,6 +160,25 @@ struct ast_stmt_loop {
 	struct ast *condition;
 	struct ast *increment;
 	struct ast *block;
+};
+
+enum assign_kind {
+	ASSIGN_INVALID = 0,
+	ASSIGN,
+	ASSIGN_ADD,
+	ASSIGN_SUB,
+	ASSIGN_MUL,
+	ASSIGN_DIV,
+	ASSIGN_MOD,
+	ASSIGN_AND,
+	ASSIGN_OR,
+	ASSIGN_XOR,
+};
+
+struct ast_stmt_assign {
+	struct ast      *lhs;
+	struct ast      *rhs;
+	enum assign_kind kind;
 };
 
 struct ast_decl {
@@ -387,17 +396,12 @@ struct ast {
 
 void        ast_arena_init(struct arena *arena, u32 owner_thread_index);
 void        ast_arena_terminate(struct arena *arena);
-struct ast *ast_create_node(struct arena *arena,
-                            enum ast_kind c,
-                            struct token *tok,
-                            struct scope *parent_scope);
+struct ast *ast_create_node(struct arena *arena, enum ast_kind c, struct token *tok, struct scope *parent_scope);
 const char *ast_binop_to_str(enum binop_kind op);
 const char *ast_unop_to_str(enum unop_kind op);
+const char *ast_assign_to_str(enum assign_kind op);
 const char *ast_get_name(const struct ast *n);
 str_t       ast_get_docs(struct unit *unit, struct ast *node);
-
-static inline bool ast_binop_is_logic(enum binop_kind op) {
-	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
-}
+bool        ast_binop_is_logic(enum binop_kind op);
 
 #endif

@@ -80,6 +80,8 @@ const char *ast_get_name(const struct ast *n) {
 		return "StmtSwitch";
 	case AST_STMT_CASE:
 		return "StmtCase";
+	case AST_STMT_ASSIGN:
+		return "StmtAssign";
 	case AST_DECL_ENTITY:
 		return "DeclEntity";
 	case AST_DECL_MEMBER:
@@ -149,31 +151,14 @@ const char *ast_get_name(const struct ast *n) {
 	case AST_EXPR_LIT_BOOL:
 		return "ExprLitBool";
 	}
-	babort("invalid ast node");
+
+	return "<invalid>";
 }
 
 const char *ast_binop_to_str(enum binop_kind op) {
 	switch (op) {
 	case BINOP_INVALID:
-		return "<invalid>";
-	case BINOP_ASSIGN:
-		return "=";
-	case BINOP_ADD_ASSIGN:
-		return "+=";
-	case BINOP_SUB_ASSIGN:
-		return "-=";
-	case BINOP_MUL_ASSIGN:
-		return "*=";
-	case BINOP_DIV_ASSIGN:
-		return "/=";
-	case BINOP_MOD_ASSIGN:
-		return "%=";
-	case BINOP_AND_ASSIGN:
-		return "&=";
-	case BINOP_OR_ASSIGN:
-		return "|=";
-	case BINOP_XOR_ASSIGN:
-		return "^=";
+		break;
 	case BINOP_ADD:
 		return "+";
 	case BINOP_SUB:
@@ -212,13 +197,34 @@ const char *ast_binop_to_str(enum binop_kind op) {
 		return "<<";
 	}
 
-	return "invalid";
+	return "<invalid>";
 }
 
-str_t ast_get_docs(struct unit *unit, struct ast *node) {
-	const s32 index = tbl_lookup_index(unit->docs, node->id);
-	if (index == -1) return str_empty;
-	return unit->docs[index].text;
+const char *ast_assign_to_str(enum assign_kind op) {
+	switch (op) {
+	case ASSIGN_INVALID:
+		break;
+	case ASSIGN:
+		return "=";
+	case ASSIGN_ADD:
+		return "+=";
+	case ASSIGN_SUB:
+		return "-=";
+	case ASSIGN_MUL:
+		return "*=";
+	case ASSIGN_DIV:
+		return "/=";
+	case ASSIGN_MOD:
+		return "%=";
+	case ASSIGN_AND:
+		return "&=";
+	case ASSIGN_OR:
+		return "|=";
+	case ASSIGN_XOR:
+		return "^=";
+	}
+
+	return "<invalid>";
 }
 
 const char *ast_unop_to_str(enum unop_kind op) {
@@ -234,4 +240,14 @@ const char *ast_unop_to_str(enum unop_kind op) {
 	default:
 		return "invalid";
 	}
+}
+
+str_t ast_get_docs(struct unit *unit, struct ast *node) {
+	const s32 index = tbl_lookup_index(unit->docs, node->id);
+	if (index == -1) return str_empty;
+	return unit->docs[index].text;
+}
+
+bool ast_binop_is_logic(enum binop_kind op) {
+	return op >= BINOP_EQ && op <= BINOP_LOGIC_OR;
 }
