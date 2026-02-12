@@ -474,8 +474,10 @@ typedef struct {
 	    0,             \
 	}
 #else
-#define once_flag      pthread_once_t
+#ifndef __once_flag_defined
+#define once_flag      pthread_once_tz
 #define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
+#endif
 #endif
 
 /** Invoke a callback exactly once
@@ -483,11 +485,16 @@ typedef struct {
  *        once.
  * @param func Callback to invoke.
  */
+/*
+
+@Note 2026-02-12: Incompatible with newer version of GLIBC.
+
 #if defined(_TTHREAD_WIN32_)
 void call_once(once_flag *flag, void (*func)(void));
 #else
 #define call_once(flag, func) pthread_once(flag, func)
 #endif
+*/
 
 #ifdef __cplusplus
 }

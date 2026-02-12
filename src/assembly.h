@@ -7,7 +7,6 @@
 #include "mir.h"
 #include "scope.h"
 #include "threading.h"
-#include "tinycthread.h"
 #include "unit.h"
 
 #include <dyncall.h>

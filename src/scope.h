@@ -4,6 +4,7 @@
 #include "arena.h"
 #include "common.h"
 #include "llvm_api.h"
+#include "threading.h"
 
 struct location;
 struct ast;

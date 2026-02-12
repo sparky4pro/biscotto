@@ -2,7 +2,7 @@
 #define BL_ARENA_H
 
 #include "common.h"
-#include "tinycthread.h"
+#include "threading.h"
 
 typedef void (*arena_elem_dtor_t)(void *);
 
