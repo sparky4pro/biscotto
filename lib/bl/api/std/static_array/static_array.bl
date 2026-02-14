@@ -55,6 +55,40 @@ sarray_pop :: fn (arr: *?TArr, out: *sarray_typeof_elem(TArr) = null) bool #inli
 	return true;
 }
 
+/// Duplicate first array element into `out` location (if not null) and shift all other elements by
+/// one slot left (the ordeing is kept). Returns `true` in case the element was erased.
+sarray_pop_first :: fn (arr: *?TArr, out: *sarray_typeof_elem(TArr) = null) bool #inline {
+	if arr.len == 0 { return false; }
+	if out {
+		memcpy(auto out, auto &arr.data[0], sizeof(@out));
+	}
+	// Eventually assert?
+	if arr.len == 0 { return false; }
+	if out {
+		memcpy(auto out, auto &arr.data[0], sizeof(@out));
+	}
+	sarray_erase_keep_order(arr, 0);
+	return true;
+}
+
+/// Erase element on index `i` and move all following elements left using memmove. This might be slow in
+/// case the array is large. Function invoke panic in case of index being out of array valid range <0, arr.len).
+sarray_erase_keep_order :: fn (arr: *?TArr, i: s64) {
+	assert(arr, "Passed array is invalid.");
+	if i >= arr.len || i < 0 {
+		panic("Array index out of range, index is % but array size is %.", i, arr.len);
+	}
+
+	if i == arr.len - 1 {
+		arr.len -= 1;
+		return;
+	}
+	elem_size :: sizeof(sarray_typeof_elem(TArr));
+	size_to_move :: (arr.len - i - 1) * auto elem_size;
+	memmove(auto &arr.data[i], auto &arr.data[i+1], auto size_to_move);
+	arr.len -= 1;
+}
+
 /// Errase element at the index `i`. The index value must be valid in range `0 <= i < len`.
 sarray_erase :: fn (arr: *?TArr, i: s64) {
 	if i >= arr.len { panic("Index overflow!"); }

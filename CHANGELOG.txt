@@ -85,6 +85,9 @@ std/math:
 std/sync:
 - Add missing support for condition variable broadcast `condition_signal_all`.
 
+std/static_array:
+- Add `sarray_pop_first` and `sarray_erase_keep_order`.
+
 [Documentation]
 - Add documentation for comptime call.
 - Add documentation for static if.
