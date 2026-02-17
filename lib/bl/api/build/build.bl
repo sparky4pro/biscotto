@@ -103,6 +103,8 @@ BuilderOptions :: struct {
 	error_limit: s32;
 	/// Enable legacy color output on Windows for terminals not supporting ANSI color codes.
 	legacy_colors: bool;
+	/// Report all warnings as errors.
+	warnings_as_errors: bool;
 
 	_doc_out_dir: *C.char; // private for now
 }

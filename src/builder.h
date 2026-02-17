@@ -22,6 +22,7 @@ struct builder_options {
 	bool do_cleanup_when_done;
 	s32  error_limit;
 	bool legacy_colors;
+	bool warnings_as_errors;
 
 	char *doc_out_dir;
 };

@@ -452,7 +452,7 @@ s32 builder_compile(const struct target *target) {
 
 	set_single_thread_mode(builder.options->no_jobs);
 	if (builder.options->no_jobs) {
-		builder_warning("Compiling target '%s' in single-thread mode.", target->name);
+		builder_info("Compiling target '%s' in single-thread mode.", target->name);
 	}
 
 	// Each invocation creates new assembly, this way we can compile the same target multiple times.
@@ -530,6 +530,10 @@ void builder_vmsg(enum builder_msg_type type,
                   const char           *format,
                   va_list               args) {
 	mtx_lock(&builder.log_mutex);
+	if (builder.options->warnings_as_errors && type == MSG_WARN) {
+		type = MSG_ERR;
+		code = ERR_WARNING;
+	}
 	if (!should_report(type)) goto DONE;
 
 	FILE *stream = stdout;

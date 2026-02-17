@@ -471,6 +471,11 @@ int main(s32 argc, char *argv[]) {
 	        .help       = "Enable single-thread mode. This is mainly useful for compiler debugging.",
 	    },
 	    {
+	        .name       = "--warnings-as-errors",
+	        .property.b = &opt.builder.warnings_as_errors,
+	        .help       = "Report all warnings as errors.",
+	    },
+	    {
 	        .name       = "--no-warning",
 	        .property.b = &opt.builder.no_warning,
 	        .help       = "Ignore all warnings.",

@@ -1,0 +1,6 @@
+// @ERR_WARNING@
+foo :: fn (a: s32) {} // Unused argument.
+main :: fn () s32 {
+	foo(10);
+	return 0;
+}

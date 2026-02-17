@@ -46,6 +46,8 @@ master
 - Add support for compiler intrinsic calls at compile-time.
 - Improved documentation generator to support compile-time calls in function type argument list.
 - Change auto cast precedence to match regular cast.
+- Add `--warnings-as-errors` compiler flag to report all warnings as errors.
+- Fix regression causing missing unused symbol reports.
 
 [Modules]
 

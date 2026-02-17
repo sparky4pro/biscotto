@@ -1,0 +1,5 @@
+// @ERR_WARNING@
+main :: fn () s32 {
+	var: s32; // Unused.
+	return 0;
+}

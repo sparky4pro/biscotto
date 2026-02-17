@@ -1,0 +1,6 @@
+// @ERR_WARNING@
+main :: fn () s32 {
+	return 0;
+}
+#private
+foo :: fn () {}

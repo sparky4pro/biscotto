@@ -1537,14 +1537,12 @@ static inline void commit_var(struct context *ctx, struct mir_var *var, const bo
 
 	// Do not commit void entries
 	if (entry->kind == SCOPE_ENTRY_UNNAMED) return;
-	// @Note 2026-01-26: Struct generation usually goes in two steps, we firstly generate incomplete type which
-	//                   is completed later. Both must be commited but we don't wan't to have them twice in
-	//                   usage-check array.
-	if (check_usage && entry->kind == SCOPE_ENTRY_INCOMPLETE) usage_check_push(ctx, entry);
+	
 
 	entry->kind   = SCOPE_ENTRY_VAR;
 	entry->as.var = var;
 	if (isflag(var->iflags, MIR_VAR_GLOBAL) || var->value.is_comptime) analyze_notify_provided(ctx, id->hash);
+	if (check_usage) usage_check_push(ctx, entry);
 }
 
 // Provide builtin type. Register & commit.
